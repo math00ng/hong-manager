@@ -219,7 +219,6 @@ tr:hover td{background:#F5FCF7}
   <div class="sb-hd"><div class="sb-logo">수연T 학생관리</div><div class="sb-sub">수업 · 출결 · 테스트</div></div>
   <button class="nb on" id="n-home" onclick="sv('home')">🏠 홈 대시보드</button>
   <button class="nb" id="n-today" onclick="sv('today')">📋 일일업무</button>
-  <button class="nb" id="n-cal" onclick="sv('cal')">📅 달력 / 스케줄</button>
   <button class="nb" id="n-memo" onclick="sv('memo')">📝 메모 · 할일</button>
   <button class="nb" id="n-att" onclick="sv('att')">📊 출석부</button>
   <button class="nb" id="n-consult" onclick="sv('consult')">💬 상담</button>
@@ -237,6 +236,9 @@ tr:hover td{background:#F5FCF7}
   <div class="sl" id="sb-stu"></div>
   <button class="ab" onclick="openAdd()">+ 학생 추가</button>
   <button class="ab" style="color:rgba(100,220,150,.9);border-color:rgba(100,220,150,.3)" onclick="saveData();syncUp();T('클라우드에 저장 중...')">💾 전체 저장</button>
+  <button class="ab" style="color:rgba(150,220,255,.9);border-color:rgba(150,220,255,.3)" onclick="exportBackup()">📥 백업 다운로드</button>
+  <button class="ab" style="color:rgba(255,220,100,.9);border-color:rgba(255,220,100,.3)" onclick="document.getElementById('restore-input').click()">📤 백업 복구</button>
+  <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(this)">
   <button class="ab" style="color:rgba(255,180,180,.9);border-color:rgba(255,180,180,.3)" onclick="doLogout()">🔒 로그아웃</button>
 </div>
 <div class="mn">
@@ -596,10 +598,10 @@ function rHome(){
     html+='</div>';
   } else {
     html+='<table style="width:100%;border-collapse:collapse;min-width:400px"><thead><tr>';
-    html+='<th style="background:#F2FAF5;padding:6px 8px;font-size:11px;color:#5A8070;border:1px solid #D4EDE0;width:90px">시간</th>';
+    html+='<th style="background:#F2FAF5;padding:6px 8px;font-size:11px;color:#5A8070;border:1px solid #D4EDE0;width:80px">시간</th>';
     [1,2,3,4,5].forEach(d=>{
       const isToday=window._wkOffset===0&&ld(today()).getDay()===d;
-      html+=`<th style="background:${isToday?'#2D9B6A':'#F2FAF5'};color:${isToday?'#fff':'#5A8070'};padding:7px 8px;font-size:12px;font-weight:700;border:1px solid #D4EDE0;text-align:center">${DAYS_KO[d-1]} <span style="font-size:10px;font-weight:400;opacity:.85">${ld(_wkDates_[d]).getMonth()+1}/${ld(_wkDates_[d]).getDate()}</span>${isToday?'<br><span style="font-size:10px;font-weight:400;opacity:.8">오늘</span>':''}</th>`;
+      html+=`<th style="background:${isToday?'#2D9B6A':'#F2FAF5'};color:${isToday?'#fff':'#5A8070'};padding:7px 8px;font-size:12px;font-weight:700;border:1px solid #D4EDE0;text-align:center;width:calc((100% - 80px)/5)">${DAYS_KO[d-1]} <span style="font-size:10px;font-weight:400;opacity:.85">${ld(_wkDates_[d]).getMonth()+1}/${ld(_wkDates_[d]).getDate()}</span>${isToday?'<br><span style="font-size:10px;font-weight:400;opacity:.8">오늘</span>':''}</th>`;
     });
     html+='</tr></thead><tbody>';
     sortedTimes.forEach(time=>{
@@ -665,11 +667,7 @@ function rHome(){
     html+='</div></div>';
   }
 
-    // ── 2단 레이아웃 ──
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-
-  // 왼쪽
-  html+='<div>';
+    // ── 결석 현황 ──
   if(weekAbsent.length){
     html+='<div class="card" style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:9px">'+(isThisMonth?'📋 이번주 결석':'📋 '+(vM+1)+'월 결석')+'</div>';
     weekAbsent.slice(0,5).forEach(a=>{
@@ -679,23 +677,6 @@ function rHome(){
     if(weekAbsent.length>5)html+=`<div style="font-size:11px;color:#7A9E8E;text-align:center;padding:4px 0">+ ${weekAbsent.length-5}명 더</div>`;
     html+='</div>';
   }
-
-  // 오른쪽
-  html+='<div>';
-
-  html+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font-size:12px;font-weight:600;color:#1A3028">📅 오늘 일정</span><button class="btn s p" onclick="sv(\'memo\')">+ 추가</button></div>';
-  if(!todayEvts.length){html+='<div style="font-size:12px;color:#7A9E8E;text-align:center;padding:8px 0">일정 없음</div>';}
-  else{todayEvts.forEach(e=>{html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #EAF5EE"><span style="width:8px;height:8px;border-radius:50%;background:${e.color};flex-shrink:0"></span><span style="flex:1;font-size:13px;color:#1A3028">${e.title}</span>${e.time?`<span style="font-size:11px;color:#7A9E8E">${e.time}</span>`:''}</div>`;});}
-  html+='</div>';
-
-  html+='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font-size:12px;font-weight:600;color:#1A3028">✅ 미완료 할일</span><span style="font-size:11px;color:#7A9E8E">'+pendingTodos.length+'개</span></div>';
-  if(!pendingTodos.length){html+='<div style="font-size:12px;color:#2D9B6A;text-align:center;padding:8px 0">✅ 모두 완료!</div>';}
-  else{pendingTodos.slice(0,5).forEach(t=>{html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #EAF5EE"><span style="flex:1;font-size:13px;color:#1A3028">${t.text}</span>${t.due?`<span style="font-size:10px;color:#922B21">${t.due}</span>`:''}</div>`;});if(pendingTodos.length>5)html+=`<div style="font-size:11px;color:#7A9E8E;text-align:center;padding:5px 0">+ ${pendingTodos.length-5}개 더</div>`;}
-  html+='<div style="margin-top:8px"><button class="btn" style="width:100%;font-size:12px" onclick="sv(\'memo\')">할일 관리 →</button></div>';
-  html+='</div>';
-  html+='</div>';
-
-  html+='</div>'; // end 2단
   document.getElementById('mc').innerHTML=html;
 }
 
@@ -2302,6 +2283,47 @@ loadData();
 loadExam();
 initClinicSlots();
 sv('home');
+
+/* ═══ 백업 / 복구 ═══ */
+function exportBackup(){
+  try{
+    const data=JSON.stringify({students,events,todos,_exam:window._examData||[]},null,2);
+    const blob=new Blob([data],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const now=new Date();
+    const fname='학생관리_백업_'+now.getFullYear()+(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0')+'_'+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0')+'.json';
+    a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    T('백업 파일 다운로드됨! ✓');
+  }catch(e){T('백업 실패: '+e.message);}
+}
+
+function importBackup(input){
+  const file=input.files[0];if(!file)return;
+  if(!confirm('백업 파일로 복구하면 현재 데이터가 덮어씌워집니다.\n계속하시겠어요?')){input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const p=JSON.parse(e.target.result);
+      if(!p.students){T('올바른 백업 파일이 아닙니다');return;}
+      students=p.students||[];events=p.events||[];todos=p.todos||[];
+      if(p._exam)window._examData=p._exam;
+      if(students.length)nextId=Math.max(...students.map(s=>s.id))+1;
+      students.forEach(s=>{
+        if(!s.schedules){
+          const days=s.slotDays&&s.slotDays.length?s.slotDays.map(Number):(s.slotId&&LEGACY[s.slotId]?LEGACY[s.slotId].days:[]);
+          const time=s.slotTime||(s.slotId&&LEGACY[s.slotId]?LEGACY[s.slotId].time:'');
+          s.schedules=(days.length||time)?[{days,time}]:[];
+        }
+      });
+      saveData();syncUp();
+      rSB();sv('home');
+      T('복구 완료! '+students.length+'명 불러옴 ✓');
+    }catch(err){T('복구 실패: 파일을 확인해주세요');}
+    input.value='';
+  };
+  reader.readAsText(file);
+}
 
 /* ═══ Supabase Auth ═══ */
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleGdvemRzd3d6Z2xobXBicHJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNzgzNzYsImV4cCI6MjA5MTc1NDM3Nn0.Uo5mjU9uB9MvMtOwQS-VLi67ub5J_PS0tMG4c8OGiyU';
