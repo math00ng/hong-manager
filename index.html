@@ -597,7 +597,7 @@ function rHome(){
     });
     html+='</div>';
   } else {
-    html+='<table style="width:100%;border-collapse:collapse;min-width:400px"><thead><tr>';
+    html+='<table style="width:100%;border-collapse:collapse;min-width:400px;table-layout:fixed"><thead><tr>';
     html+='<th style="background:#F2FAF5;padding:6px 8px;font-size:11px;color:#5A8070;border:1px solid #D4EDE0;width:80px">시간</th>';
     [1,2,3,4,5].forEach(d=>{
       const isToday=window._wkOffset===0&&ld(today()).getDay()===d;
@@ -610,7 +610,7 @@ function rHome(){
       [1,2,3,4,5].forEach(d=>{
         const isToday=window._wkOffset===0&&ld(today()).getDay()===d;
         const cellStus=dayMap[d].filter(({time:t})=>t===time).sort((a,b)=>a.s.name.localeCompare(b.s.name,'ko'));
-        html+=`<td style="padding:5px 6px;border:1px solid #D4EDE0;vertical-align:top;background:${isToday?'#F0FAF4':'#fff'};min-width:70px">`;
+        html+=`<td style="padding:5px 6px;border:1px solid #D4EDE0;vertical-align:top;background:${isToday?'#F0FAF4':'#fff'};overflow:hidden">`;
         if(cellStus.length){
           cellStus.forEach(item=>{
             const s=item.s;
