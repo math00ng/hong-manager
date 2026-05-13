@@ -13,6 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>수연T 학생관리</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -191,6 +192,27 @@ tr:hover td{background:#F5FCF7}
 </style>
 </head>
 <body>
+<!-- ═══ 로그인 화면 ═══ -->
+<div id="login-screen" style="position:fixed;inset:0;background:linear-gradient(135deg,#1B3A2D 0%,#2D9B6A 100%);display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:42px;margin-bottom:8px">🏫</div>
+      <div style="font-size:18px;font-weight:700;color:#1A3028">수연T 학생관리</div>
+      <div style="font-size:12px;color:#7A9E8E;margin-top:4px">로그인이 필요합니다</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+      <label style="font-size:11px;color:#5A8070;font-weight:500">이메일</label>
+      <input type="email" id="login-email" placeholder="email@example.com" autocomplete="username" style="padding:10px 12px;font-size:16px;border:1px solid #B2D8C4;border-radius:8px;background:#fff;color:#1A3028;width:100%;font-family:system-ui,sans-serif">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:18px">
+      <label style="font-size:11px;color:#5A8070;font-weight:500">비밀번호</label>
+      <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding:10px 12px;font-size:16px;border:1px solid #B2D8C4;border-radius:8px;background:#fff;color:#1A3028;width:100%;font-family:system-ui,sans-serif">
+    </div>
+    <button onclick="doLogin()" id="login-btn" style="width:100%;padding:12px;font-size:15px;font-weight:600;background:#2D9B6A;color:#fff;border:none;border-radius:8px;cursor:pointer">로그인</button>
+    <div id="login-err" style="display:none;margin-top:12px;padding:10px;background:#FDECEA;color:#922B21;border-radius:6px;font-size:12px;text-align:center"></div>
+  </div>
+</div>
+
 <div class="ov2" id="ov2" onclick="closeSB()"></div>
 <div class="app">
 <div class="sb" id="sb">
@@ -215,6 +237,7 @@ tr:hover td{background:#F5FCF7}
   <div class="sl" id="sb-stu"></div>
   <button class="ab" onclick="openAdd()">+ 학생 추가</button>
   <button class="ab" style="color:rgba(100,220,150,.9);border-color:rgba(100,220,150,.3)" onclick="saveData();syncUp();T('클라우드에 저장 중...')">💾 전체 저장</button>
+  <button class="ab" style="color:rgba(255,180,180,.9);border-color:rgba(255,180,180,.3)" onclick="doLogout()">🔒 로그아웃</button>
 </div>
 <div class="mn">
   <div class="tp">
@@ -282,10 +305,11 @@ function saveData(){
 
 async function syncUp(){
   if(_syncing)return;
+  if(!_accessToken){showSync('local');return;}
   _syncing=true;_dirty=false;
   try{
     const body=JSON.stringify({id:'main',data:{students,events,todos},updated_at:new Date().toISOString()});
-    const h={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=minimal'};
+    const h={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+_accessToken,'Prefer':'return=minimal'};
     let r=await fetch(SB_URL+'/rest/v1/hakwon_data?id=eq.main',{method:'PATCH',headers:h,body});
     if(r.status===404||!r.ok){
       r=await fetch(SB_URL+'/rest/v1/hakwon_data',{method:'POST',headers:h,body});
@@ -297,10 +321,11 @@ async function syncUp(){
 }
 
 async function syncDown(){
+  if(!_accessToken){showSync('local');return false;}
   showSync('loading');
   try{
     const r=await fetch(SB_URL+'/rest/v1/hakwon_data?id=eq.main&select=data',{
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+_accessToken}
     });
     const rows=await r.json();
     if(rows&&rows.length&&rows[0].data&&rows[0].data.students?.length){
@@ -2277,8 +2302,57 @@ loadData();
 loadExam();
 initClinicSlots();
 sv('home');
-// 클라우드에서 최신 데이터 불러오기
-syncDown();
+
+/* ═══ Supabase Auth ═══ */
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleGdvemRzd3d6Z2xobXBicHJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNzgzNzYsImV4cCI6MjA5MTc1NDM3Nn0.Uo5mjU9uB9MvMtOwQS-VLi67ub5J_PS0tMG4c8OGiyU';
+const sbClient=supabase.createClient(SB_URL,SUPABASE_ANON_KEY);
+let _accessToken=null;
+
+async function checkAuth(){
+  try{
+    const {data:{session}}=await sbClient.auth.getSession();
+    if(session){
+      _accessToken=session.access_token;
+      document.getElementById('login-screen').style.display='none';
+      return true;
+    }
+  }catch(e){console.error(e);}
+  return false;
+}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const errEl=document.getElementById('login-err');
+  const btn=document.getElementById('login-btn');
+  if(!email||!pw){errEl.textContent='이메일과 비밀번호를 입력하세요';errEl.style.display='block';return;}
+  btn.disabled=true;btn.textContent='로그인 중...';errEl.style.display='none';
+  try{
+    const {data,error}=await sbClient.auth.signInWithPassword({email,password:pw});
+    if(error)throw error;
+    _accessToken=data.session.access_token;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('login-pw').value='';
+    syncDown();
+  }catch(e){
+    errEl.textContent='로그인 실패: 이메일 또는 비밀번호를 확인하세요';
+    errEl.style.display='block';
+    btn.disabled=false;btn.textContent='로그인';
+  }
+}
+
+async function doLogout(){
+  if(!confirm('로그아웃 하시겠어요?'))return;
+  await sbClient.auth.signOut();
+  _accessToken=null;
+  location.reload();
+}
+
+// 세션 확인 후 클라우드 동기화
+(async()=>{
+  const authed=await checkAuth();
+  if(authed){syncDown();}else{showSync('local');}
+})();
 
 // ── PWA Service Worker 등록 ──
 if('serviceWorker' in navigator){
