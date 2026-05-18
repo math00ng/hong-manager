@@ -719,6 +719,8 @@ function rToday(){
         else{html+='<input type="number" min="0" max="100" placeholder="맞" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.correct!=null?wScore.correct:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'correct\',this.value)"><span style="font-size:10px;color:#7A9E8E">/</span><input type="number" min="0" max="100" placeholder="전" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.total!=null?wScore.total:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'total\',this.value)">';}
         html+='<button class="at'+(noW?' 없음':'')+'" style="font-size:9px;padding:2px 5px;margin-left:auto" onclick="toggleNo('+s.id+',\'weekly\',\''+vd+'\')">없음</button></div>';
         html+='<input placeholder="과제..." value="'+hw+'" style="width:100%;padding:4px 7px;font-size:11px;border:1px solid #FAD76A;border-radius:var(--rs);background:#FEF9E7;color:#1A3028" onchange="setHW('+s.id+',\''+vd+'\',this.value)">';
+        const _todayNote=(s.fbNotes||{})[vd]||'';
+        html+='<input placeholder="특이사항..." value="'+escHtml(_todayNote)+'" style="width:100%;padding:4px 7px;font-size:11px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#F5FCF7;color:#1A3028" onchange="setTodayNote('+s.id+',\''+vd+'\',this.value)">';
         // 지난 과제 (직전 등원일)
         const _prevHwDates=Object.keys(s.homework||{}).filter(d=>d<vd&&(s.homework||{})[d]).sort();
         if(_prevHwDates.length){
@@ -757,6 +759,7 @@ function changeStuTime(sid,date){
 }
 
 function setHW(sid,d,v){const s=gs(sid);if(!s.homework)s.homework={};s.homework[d]=v;saveData();}
+function setTodayNote(sid,d,v){const s=gs(sid);if(!s.fbNotes)s.fbNotes={};if(v)s.fbNotes[d]=v;else delete s.fbNotes[d];saveData();}
 function setTest(sid,type,date,field,val){const s=gs(sid);if(!s)return;const arr=type==='daily'?s.dailyTests:s.weeklyTests;const ex=arr.findIndex(t=>t.date===date);const v=val===''?'':isNaN(+val)?val:+val;if(ex>=0)arr[ex][field]=v;else{const o={date};o[field]=v;arr.push(o);}saveData();}
 function toggleNo(sid,type,date){const s=gs(sid);if(!s)return;const key=type==='daily'?'noDaily':'noWeekly';if(!s[key])s[key]={};s[key][date]=!s[key][date];if(!s[key][date])delete s[key][date];saveData();rToday();}
 function parseTodoDate(text,base){const m=text.match(/(\d{1,2})\/(\d{1,2})/);if(!m)return null;return ds(new Date(ld(base).getFullYear(),+m[1]-1,+m[2]));}
