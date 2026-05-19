@@ -505,8 +505,6 @@ function rHome(){
   const timeSlots=new Set();
   students.filter(s=>s.active!==false).forEach(s=>{
     getScheds(s).forEach(sc=>{if(sc.time)timeSlots.add(sc.time);});
-    // 보강 시간도 timeSlots에 추가
-    Object.entries(s.makeups||{}).forEach(([d,v])=>{if(v&&v.match(/\d+:\d+-\d+:\d+/))timeSlots.add(v);});
   });
   const sortedTimes=[...timeSlots].sort();
 
@@ -531,17 +529,21 @@ function rHome(){
       const att=(s.attendance||{})[dateStr];
       const isAbsent=att==='X';
       const sched=getScheds(s).find(sc=>sc.days&&sc.days.includes(d));
+      // 이 날짜에 보강이 있는지 확인 (makeup 값이 이 날짜를 포함하는지)
+      const hasMakeup=Object.entries(s.makeups||{}).some(([absentDate,mkVal])=>{
+        if(!mkVal)return false;
+        // mkVal이 날짜 문자열인 경우 (예: "4/20 토", "5/20")
+        const mkDate=ld(dateStr);
+        const mkStr=(mkDate.getMonth()+1)+'/'+mkDate.getDate();
+        return mkVal.includes(mkStr);
+      });
       if(ovr){
-        dayMap[d].push({s,time:ovr,changed:true,absent:isAbsent});
+        dayMap[d].push({s,time:ovr,changed:true,absent:isAbsent,makeup:hasMakeup});
       } else if(sched){
-        dayMap[d].push({s,time:sched.time||'',absent:isAbsent});
-      }
-      // 보강: makeups에 해당 날짜가 있고 시간 형식이면 추가
-      const mkup=(s.makeups||{})[dateStr];
-      if(mkup&&mkup.match(/\d+:\d+-\d+:\d+/)){
-        // 이미 위에서 추가된 경우 중복 방지
-        const already=dayMap[d].find(x=>x.s.id===s.id&&x.time===mkup);
-        if(!already) dayMap[d].push({s,time:mkup,makeup:true,absent:false});
+        dayMap[d].push({s,time:sched.time||'',absent:isAbsent,makeup:hasMakeup});
+      } else if(hasMakeup){
+        // 정규 수업은 없지만 보강이 있는 경우
+        dayMap[d].push({s,time:'보강',absent:false,makeup:true});
       }
     });
   });
@@ -632,10 +634,11 @@ function rHome(){
     });
     html+='</tr></thead><tbody>';
     sortedTimes.forEach(time=>{
+      if(time==='보강')return; // 보강 전용 행은 별도 처리
       html+='<tr>';
       html+=`<td style="padding:6px 8px;font-size:11px;color:#5A8070;border:1px solid #D4EDE0;background:#F2FAF5;font-weight:600;white-space:nowrap">${time}</td>`;
       [1,2,3,4,5].forEach(d=>{
-        const isToday=window._wkOffset===0&&ld(today()).getDay()===d;
+        const isToday=_wkOff===0&&ld(today()).getDay()===d;
         const cellStus=dayMap[d].filter(({time:t})=>t===time).sort((a,b)=>a.s.name.localeCompare(b.s.name,'ko'));
         html+=`<td style="padding:5px 6px;border:1px solid #D4EDE0;vertical-align:top;background:${isToday?'#F0FAF4':'#fff'};overflow:hidden">`;
         if(cellStus.length){
@@ -660,6 +663,26 @@ function rHome(){
       });
       html+='</tr>';
     });
+    // 보강 행 별도 표시
+    const hasMakeupRow=[1,2,3,4,5].some(d=>dayMap[d].some(x=>x.makeup&&x.time==='보강'));
+    if(hasMakeupRow){
+      html+='<tr><td style="padding:6px 8px;font-size:11px;color:#922B21;border:1px solid #D4EDE0;background:#FEF2F2;font-weight:600">보강</td>';
+      [1,2,3,4,5].forEach(d=>{
+        const isToday=_wkOff===0&&ld(today()).getDay()===d;
+        const mkStus=dayMap[d].filter(x=>x.makeup&&x.time==='보강');
+        html+=`<td style="padding:5px 6px;border:1px solid #D4EDE0;vertical-align:top;background:${isToday?'#FEF2F2':'#FFF8F8'};overflow:hidden">`;
+        mkStus.forEach(item=>{
+          html+='<div style="font-size:11px;color:#922B21;padding:2px 5px;border-radius:3px;margin-bottom:2px;background:#FDECEA;border:1px solid #F5B7B1;white-space:nowrap">'
+            +(item.s.grade?'<span style="font-size:9px;color:#F87171">'+item.s.grade+'</span>':'')
+            +'<span onclick="selStu2('+item.s.id+')" style="cursor:pointer">'+item.s.name+'</span>'
+            +' <span style="font-size:9px;font-weight:600">보강</span>'
+            +'</div>';
+        });
+        if(!mkStus.length)html+='<span style="font-size:10px;color:#FCA5A5">·</span>';
+        html+='</td>';
+      });
+      html+='</tr>';
+    }
     const noSched=students.filter(s=>s.active!==false&&(!s.schedules||!s.schedules.length||!s.schedules.some(sc=>sc.days&&sc.days.length)));
     if(noSched.length){
       html+=`<tr><td style="padding:6px 8px;font-size:11px;color:#7A9E8E;border:1px solid #D4EDE0;background:#F2FAF5">미등록</td><td colspan="5" style="padding:5px 6px;border:1px solid #D4EDE0">`;
