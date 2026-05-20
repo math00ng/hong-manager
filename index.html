@@ -223,6 +223,7 @@ tr:hover td{background:#F5FCF7}
   <button class="nb" id="n-att" onclick="sv('att')">📊 출석부</button>
   <button class="nb" id="n-consult" onclick="sv('consult')">💬 상담</button>
   <button class="nb" id="n-fb" onclick="sv('fb')">✉️ 피드백 문자</button>
+  <button class="nb" id="n-book" onclick="sv('book')">📚 교재현황</button>
   <button class="nb" id="n-exam" onclick="sv('exam')">📝 내신대비</button>
   <button class="nb" id="n-clinic" onclick="sv('clinic')">🏋️ 주말클리닉</button>
   <button class="nb" id="n-pmp" onclick="sv('pmp')">📖 PMP</button>
@@ -439,11 +440,11 @@ function rSB(){
 }
 function sv(v){
   curView=v;selStu=null;closeSB();
-  const map={home:'n-home',today:'n-today',cal:'n-cal',att:'n-att',consult:'n-consult',fb:'n-fb',memo:'n-memo',exam:'n-exam',clinic:'n-clinic',pmp:'n-pmp'};
+  const map={home:'n-home',today:'n-today',cal:'n-cal',att:'n-att',consult:'n-consult',fb:'n-fb',memo:'n-memo',exam:'n-exam',clinic:'n-clinic',pmp:'n-pmp',book:'n-book'};
   setN(map[v]);rSB();
   const mc=document.getElementById('mc');
   mc.style.cssText='padding:16px;display:block;overflow-y:auto';
-  if(v==='home')rHome();else if(v==='today')rToday();else if(v==='cal')rCal();else if(v==='att')rAtt();else if(v==='consult')rConsult();else if(v==='fb')rFB();else if(v==='memo')rMemo();else if(v==='exam')rExam();else if(v==='clinic')rClinic();else if(v==='pmp')rPMP();
+  if(v==='home')rHome();else if(v==='today')rToday();else if(v==='cal')rCal();else if(v==='att')rAtt();else if(v==='consult')rConsult();else if(v==='fb')rFB();else if(v==='memo')rMemo();else if(v==='exam')rExam();else if(v==='clinic')rClinic();else if(v==='pmp')rPMP();else if(v==='book')rBook();
 }
 function selStu2(id){
   selStu=id;curView='stu';curTab='info';setN(null);rSB();closeSB();
@@ -1520,7 +1521,24 @@ function graphT(s){
   return h;
 }
 
-/* 월간 성적표 */
+/* 교재 현황 */
+function rBook(){
+  document.getElementById('tp-t').textContent='교재현황';
+  document.getElementById('tp-a').innerHTML='';
+  const active=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  let html='<div class="card"><table><thead><tr><th>학생</th><th>진행 중인 교재</th></tr></thead><tbody>';
+  active.forEach(s=>{
+    const curBooks=(s.textbooks||[]).filter(tb=>!tb.done);
+    const bookNames=curBooks.length?curBooks.map(tb=>tb.name).join(', '):'<span style="color:#B2D8C4">-</span>';
+    html+=`<tr>
+      <td><button class="lb" onclick="selStu2(${s.id})">${s.name}</button><span style="font-size:11px;color:#94A3B8;margin-left:5px">${s.grade||''}</span></td>
+      <td style="font-size:13px;color:#1A3028">${bookNames}</td>
+    </tr>`;
+  });
+  if(!active.length) html+='<tr><td colspan="2" style="text-align:center;color:#7A9E8E;padding:24px">학생 정보가 없습니다</td></tr>';
+  html+='</tbody></table></div>';
+  document.getElementById('mc').innerHTML=html;
+}
 function reportT(s){
   const now=new Date();
   if(window._repY===undefined){window._repY=now.getFullYear();window._repM=now.getMonth();}
