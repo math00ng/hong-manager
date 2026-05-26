@@ -539,18 +539,25 @@ function rHome(){
     // 보강: makeups 값에 이번주 날짜가 포함되는지 확인
     Object.entries(s.makeups||{}).forEach(([absentDate,mkVal])=>{
       if(!mkVal)return;
-      // mkVal 예: "4/20 토", "5/20", "5/21(수)" 등
-      // 이번주 날짜 중 mkVal에 포함된 날 찾기
+      // mkVal 예: "4/20 토", "5/20", "5/26 4:30-6:30", "5/21(수)" 등
       [1,2,3,4,5].forEach(d=>{
         const dateStr=_wkDates_[d];
         const dt=ld(dateStr);
         const m=dt.getMonth()+1,day=dt.getDate();
-        // m/day 형식으로 비교
         if(mkVal.includes(m+'/'+day)||mkVal.includes(String(m).padStart(2,'0')+'/'+String(day).padStart(2,'0'))){
-          // 이 날에 보강 표시 - 정규 수업 시간 기준
-          const sched=getScheds(s).find(sc=>sc.days&&sc.days.includes(ld(absentDate).getDay?.()??new Date(absentDate.replace(/\//g,'-')).getDay()));
-          const mkTime=sched?.time||getScheds(s)[0]?.time||'보강';
-          // 이미 정규 수업으로 있는 항목과 중복 방지
+          // mkVal에서 시간 파싱 시도 (예: "5/26 4:30-6:30" → "4:30-6:30")
+          const timeMatch=mkVal.match(/(\d{1,2}:\d{2}-\d{1,2}:\d{2})/);
+          let mkTime;
+          if(timeMatch){
+            // mkVal에 시간이 포함된 경우 그 시간 사용
+            mkTime=timeMatch[1];
+            // timeSlots에도 추가
+            timeSlots.add(mkTime);
+          } else {
+            // 시간 없으면 정규 수업 시간 사용
+            const sched=getScheds(s).find(sc=>sc.days&&sc.days.includes(ld(absentDate).getDay?.()??new Date(absentDate.replace(/\//g,'-')).getDay()));
+            mkTime=sched?.time||getScheds(s)[0]?.time||'보강';
+          }
           const already=dayMap[d].find(x=>x.s.id===s.id&&x.makeup);
           if(!already) dayMap[d].push({s,time:mkTime,makeup:true,absent:false});
         }
@@ -663,7 +670,9 @@ function rHome(){
               +(s.grade?'<span style="font-size:9px;color:#7A9E8E">'+s.grade+'</span>':'')
               +'<span onclick="selStu2('+s.id+')" style="cursor:pointer;flex:1">'+s.name+'</span>'
               +_tag
-              +(!item.makeup?'<span onclick="changeStuTimeHome('+s.id+',\''+_dateStr+'\')" title="시간 변경" style="cursor:pointer;color:#94A3B8;font-size:10px;padding:0 2px">⏱</span>':'')
+              +(item.makeup
+                ?'<span onclick="changeMakeupTimeHome('+s.id+',\''+_dateStr+'\')" title="보강 시간 변경" style="cursor:pointer;color:#F87171;font-size:10px;padding:0 2px">⏱</span>'
+                :'<span onclick="changeStuTimeHome('+s.id+',\''+_dateStr+'\')" title="시간 변경" style="cursor:pointer;color:#94A3B8;font-size:10px;padding:0 2px">⏱</span>')
               +'</div>';
           });
         } else {
@@ -816,6 +825,37 @@ function changeStuTimeHome(sid,date){
   if(!s.timeOverrides)s.timeOverrides={};
   if(!newTime||newTime===orig){delete s.timeOverrides[date];T('정규 시간으로 복귀');}
   else{s.timeOverrides[date]=newTime;T(s.name+' 시간 변경: '+newTime);}
+  saveData();rHome();
+}
+
+function changeMakeupTimeHome(sid,date){
+  const s=gs(sid);if(!s)return;
+  const dt=ld(date);
+  const m=dt.getMonth()+1,day=dt.getDate();
+  // 이 날짜에 해당하는 makeup 키 찾기
+  const mkKey=Object.keys(s.makeups||{}).find(k=>{
+    const v=s.makeups[k];
+    return v&&(v.includes(m+'/'+day)||v.includes(String(m).padStart(2,'0')+'/'+String(day).padStart(2,'0')));
+  });
+  if(!mkKey)return;
+  const curVal=s.makeups[mkKey];
+  const timeMatch=curVal.match(/(\d{1,2}:\d{2}-\d{1,2}:\d{2})/);
+  const curTime=timeMatch?timeMatch[1]:'';
+  const newTime=prompt('보강 시간 입력 (예: 4:30-6:30)\n현재: '+(curTime||'미설정'),curTime);
+  if(newTime===null)return;
+  // 기존 값에서 시간 부분만 교체
+  if(newTime){
+    if(timeMatch){
+      s.makeups[mkKey]=curVal.replace(timeMatch[1],newTime);
+    } else {
+      s.makeups[mkKey]=curVal+' '+newTime;
+    }
+    T(s.name+' 보강 시간: '+newTime);
+  } else {
+    // 시간 제거
+    s.makeups[mkKey]=curVal.replace(/\s*\d{1,2}:\d{2}-\d{1,2}:\d{2}/,'').trim();
+    T('보강 시간 제거됨');
+  }
   saveData();rHome();
 }
 function setTest(sid,type,date,field,val){const s=gs(sid);if(!s)return;const arr=type==='daily'?s.dailyTests:s.weeklyTests;const ex=arr.findIndex(t=>t.date===date);const v=val===''?'':isNaN(+val)?val:+val;if(ex>=0)arr[ex][field]=v;else{const o={date};o[field]=v;arr.push(o);}saveData();}
