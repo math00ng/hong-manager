@@ -2445,8 +2445,20 @@ function importBackup(input){
 
 /* ═══ Supabase Auth ═══ */
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhleGdvemRzd3d6Z2xobXBicHJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNzgzNzYsImV4cCI6MjA5MTc1NDM3Nn0.Uo5mjU9uB9MvMtOwQS-VLi67ub5J_PS0tMG4c8OGiyU';
-const sbClient=supabase.createClient(SB_URL,SUPABASE_ANON_KEY);
+const sbClient=supabase.createClient(SB_URL,SUPABASE_ANON_KEY,{
+  auth:{autoRefreshToken:true,persistSession:true,detectSessionInUrl:false}
+});
 let _accessToken=null;
+
+// 토큰 자동 갱신 리스너
+sbClient.auth.onAuthStateChange((event,session)=>{
+  if(session){
+    _accessToken=session.access_token;
+    if(event==='TOKEN_REFRESHED')showSync('saved');
+  } else {
+    _accessToken=null;
+  }
+});
 
 async function checkAuth(){
   try{
