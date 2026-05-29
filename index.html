@@ -355,7 +355,7 @@ function applyLoaded(p){
     totalTest:s.totalTest||{score:'',date:''},
     textbooks:s.textbooks||[],consultations:s.consultations||[],
     notes:s.notes||'',retireDate:s.retireDate||'',retireReason:s.retireReason||'',
-    wcSchedule:s.wcSchedule||'',pmpSchedule:s.pmpSchedule||'',clinicNote:s.clinicNote||'',
+    wcSchedule:s.wcSchedule||'',pmpSchedule:s.pmpSchedule||'',clinicNote:s.clinicNote||'',pmpNote:s.pmpNote||'',
     feedbackHistory:s.feedbackHistory||[],
     fbNotes:s.fbNotes||{},
       timeOverrides:s.timeOverrides||{},
@@ -394,7 +394,7 @@ function loadData(){
       totalTest:s.totalTest||{score:'',date:''},
       textbooks:s.textbooks||[],consultations:s.consultations||[],
       notes:s.notes||'',retireDate:s.retireDate||'',retireReason:s.retireReason||'',
-      wcSchedule:s.wcSchedule||'',pmpSchedule:s.pmpSchedule||'',clinicNote:s.clinicNote||'',
+      wcSchedule:s.wcSchedule||'',pmpSchedule:s.pmpSchedule||'',clinicNote:s.clinicNote||'',pmpNote:s.pmpNote||'',
       feedbackHistory:s.feedbackHistory||[],
       fbNotes:s.fbNotes||{},
       timeOverrides:s.timeOverrides||{},
@@ -2087,140 +2087,49 @@ function rClinic(){
 function rPMP(){
   document.getElementById('tp-t').textContent='📖 PMP';
   document.getElementById('tp-a').innerHTML='';
-  var skey='pmpSlots',akey='pmpAtt';
   var gradeOrder={'초1':1,'초2':2,'초3':3,'초4':4,'초5':5,'초6':6,'중1':7,'중2':8,'중3':9,'고1':10,'고2':11,'고3':12};
   var active=students.filter(function(s){return s.active!==false;}).sort(function(a,b){return (gradeOrder[a.grade]||99)-(gradeOrder[b.grade]||99)||a.name.localeCompare(b.name,'ko');});
-  var now=new Date(),dow=now.getDay()||7;
-  var sat=new Date(now);sat.setDate(now.getDate()+(6-dow));
-  function fmt(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-  var thisWeekSat=fmt(sat);
-  var mc=document.getElementById('mc');mc.innerHTML='';
+  if(!window._pmpChecks)window._pmpChecks={};
 
-  // ── 등록 카드 ──
-  var regCard=document.createElement('div');regCard.className='card';regCard.style.marginBottom='14px';
-  regCard.innerHTML='<div style="font-size:11px;font-weight:600;color:#5A8070;text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px">PMP 정규 시간 등록</div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">'
-    +'<div class="fl"><label>학생</label><select id="pmp-sel" style="padding:7px 9px;font-size:13px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;min-width:100px"><option value="">선택</option>'
-    +active.map(function(s){return '<option value="'+s.id+'">'+(s.grade?s.grade+' ':'')+s.name+'</option>';}).join('')+'</select></div>'
-    +'<div class="fl"><label>요일</label><select id="pmp-day" style="padding:7px 9px;font-size:13px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff"><option>월</option><option>화</option><option>수</option><option>목</option><option>금</option></select></div>'
-    +'<div class="fl"><label>시간</label><input id="pmp-time" placeholder="15:30-16:00" style="width:130px;padding:7px 9px;font-size:13px;border:1px solid #B2D8C4;border-radius:var(--rs)"></div>'
-    +'<div class="fl" style="flex:1;min-width:80px"><label>메모</label><input id="pmp-memo" placeholder="메모(선택)" style="width:100%;padding:7px 9px;font-size:13px;border:1px solid #B2D8C4;border-radius:var(--rs)"></div>'
-    +'<button id="pmp-add-btn" class="btn p">+ 등록</button></div>';
-  mc.appendChild(regCard);
-  document.getElementById('pmp-add-btn').addEventListener('click',function(){
-    var sid=parseInt(document.getElementById('pmp-sel').value);
-    var day=document.getElementById('pmp-day').value;
-    var time=document.getElementById('pmp-time').value;
-    var memo=document.getElementById('pmp-memo').value;
-    if(!sid){T('학생을 선택해주세요');return;}
-    var s=gs(sid);if(!s)return;
-    if(!Array.isArray(s[skey]))s[skey]=[];
-    if(s[skey].some(function(sl){return sl.day===day&&sl.time===time;})){T('이미 같은 요일/시간이 있어요');return;}
-    s[skey].push({day:day,time:time,memo:memo});
-    saveData();T('등록 완료!');
-    document.getElementById('pmp-sel').value='';document.getElementById('pmp-time').value='';document.getElementById('pmp-memo').value='';
-    rPMP();
+  var mc=document.getElementById('mc');
+  var html='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    +'<span style="font-size:13px;font-weight:600;color:#1A3028">PMP 현황</span>'
+    +'<button class="btn s d" onclick="if(confirm(\'시험지 체크를 모두 초기화할까요?\')){{window._pmpChecks={};rPMP();}}">체크 초기화</button>'
+    +'</div>'
+    +'<div style="overflow-x:auto"><table>'
+    +'<thead><tr>'
+    +'<th style="min-width:70px">이름</th>'
+    +'<th style="min-width:80px">수업요일</th>'
+    +'<th style="min-width:120px">PMP 일정</th>'
+    +'<th style="min-width:140px">특이사항</th>'
+    +'<th style="min-width:60px;text-align:center">시험지</th>'
+    +'</tr></thead><tbody>';
+
+  active.forEach(function(s){
+    var schDays=[...new Set(getStuDays(s))].sort().map(function(d){return ['일','월','화','수','목','금','토'][d];}).join(', ');
+    var pmpLabel=s.pmpSchedule||'-';
+    var note=s.pmpNote||'';
+    var checked=window._pmpChecks[s.id]||false;
+    html+='<tr style="background:'+(checked?'#EFF6FF':'#fff')+'">'
+      +'<td><button class="lb" onclick="selStu2('+s.id+')" style="font-weight:600">'+s.name+'</button>'
+      +(s.grade?'<span style="font-size:10px;color:#94A3B8;margin-left:4px">'+s.grade+'</span>':'')+'</td>'
+      +'<td style="font-size:12px;color:#5A8070">'+schDays+'</td>'
+      +'<td style="font-size:12px;color:#2D5044">'+pmpLabel+'</td>'
+      +'<td><input value="'+escHtml(note)+'" placeholder="특이사항..." '
+      +'onchange="gs('+s.id+').pmpNote=this.value;saveData()" '
+      +'style="width:100%;padding:4px 7px;font-size:12px;border:1px solid #D4EDE0;border-radius:4px;background:#F5FCF7;color:#1A3028;font-family:var(--font)"></td>'
+      +'<td style="text-align:center">'
+      +'<input type="checkbox" '+(checked?'checked':'')+' '
+      +'onchange="window._pmpChecks['+s.id+']=this.checked;rPMP()" '
+      +'style="width:18px;height:18px;cursor:pointer;accent-color:#3B82F6">'
+      +'</td>'
+      +'</tr>';
   });
 
-  // ── 정규 시간표 (요일별) ──
-  var slotsByDay={'월':[],'화':[],'수':[],'목':[],'금':[]};
-  active.forEach(function(s){(s[skey]||[]).forEach(function(slot,si){if(slotsByDay[slot.day])slotsByDay[slot.day].push({s:s,slot:slot,si:si});});});
-  var activeDays=['월','화','수','목','금'].filter(function(d){return slotsByDay[d].length>0;});
-  var todayKo=['일','월','화','수','목','금','토'][new Date().getDay()];
+  if(!active.length) html+='<tr><td colspan="5" style="text-align:center;color:#7A9E8E;padding:24px">학생 정보가 없습니다</td></tr>';
 
-  if(activeDays.length){
-    var ttCard=document.createElement('div');ttCard.className='card';ttCard.style.marginBottom='14px';
-    var ttHTML='<div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:10px">📅 PMP 정규 시간표</div>'
-      +'<div style="display:grid;grid-template-columns:repeat('+activeDays.length+',1fr);gap:8px">';
-    activeDays.forEach(function(day){
-      var isToday=todayKo===day;
-      var slots=slotsByDay[day].sort(function(a,b){return (a.slot.time||'').localeCompare(b.slot.time||'');});
-      ttHTML+='<div style="border-radius:var(--rs);overflow:hidden;border:1.5px solid '+(isToday?'#3B82F6':'#BFDBFE')+'">'
-        +'<div style="background:'+(isToday?'#1E40AF':'#DBEAFE')+';color:'+(isToday?'#fff':'#1E40AF')+';font-size:12px;font-weight:700;text-align:center;padding:6px 0">'+day+'요일<br><span style="font-size:10px;font-weight:400">'+slots.length+'명</span></div>'
-        +'<div style="background:#F8FBFF;padding:5px">';
-      slots.forEach(function(item){
-        var s=item.s,slot=item.slot,si=item.si;
-        ttHTML+='<div style="background:#fff;border:1px solid #BFDBFE;border-radius:4px;padding:4px 6px;margin-bottom:3px;cursor:pointer;display:flex;align-items:center;gap:4px" data-sid="'+s.id+'" class="pmp-tt-stu">'
-          +(s.grade?'<span style="font-size:9px;color:#3B82F6;flex-shrink:0">'+s.grade+'</span>':'')
-          +'<div style="flex:1"><div style="font-size:11px;font-weight:600;color:#1A3028">'+s.name+'</div>'
-          +(slot.time?'<div style="font-size:10px;color:#6B7280">'+slot.time+'</div>':'')
-          +'</div>'
-          +'<button class="pmp-tt-rm" data-sid="'+s.id+'" data-si="'+si+'" style="background:none;border:none;cursor:pointer;color:#CBD5E1;font-size:11px;padding:1px 3px" onmouseover="this.style.color=\'#EF4444\'" onmouseout="this.style.color=\'#CBD5E1\'">✕</button>'
-          +'</div>';
-      });
-      ttHTML+='</div></div>';
-    });
-    ttHTML+='</div>';
-    ttCard.innerHTML=ttHTML;mc.appendChild(ttCard);
-    ttCard.querySelectorAll('.pmp-tt-stu').forEach(function(el){el.addEventListener('click',function(e){if(!e.target.classList.contains('pmp-tt-rm'))selStu2(parseInt(this.dataset.sid));});});
-    ttCard.querySelectorAll('.pmp-tt-rm').forEach(function(btn){
-      btn.addEventListener('click',function(e){
-        e.stopPropagation();
-        if(!confirm('삭제할까요?'))return;
-        var s=gs(parseInt(this.dataset.sid));if(!s)return;
-        s[skey].splice(parseInt(this.dataset.si),1);saveData();T('삭제 완료');rPMP();
-      });
-    });
-  }
-
-  // ── 이번주 출석 + 기록 입력/수정/삭제 ──
-  var wkStus=active.filter(function(s){return (s[skey]||[]).length>0;});
-  if(wkStus.length){
-    var attCard=document.createElement('div');attCard.className='card';
-    var attHTML='<div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:10px">📋 이번주 출석 기록 ('+thisWeekSat+')</div>'
-      +'<table><thead><tr><th>학생</th><th>요일/시간</th><th style="text-align:center">참여</th><th style="text-align:center">불참</th><th>메모</th><th></th></tr></thead><tbody>';
-    wkStus.forEach(function(s){
-      (s[skey]||[]).forEach(function(slot,si){
-        var attKey=thisWeekSat+'_'+si;
-        var att=(s[akey]||{})[attKey]||'';
-        var memo=(s[akey+'Memo']||{})[attKey]||'';
-        attHTML+='<tr>'
-          +'<td><span style="font-size:12px;font-weight:600;cursor:pointer;color:#2D9B6A" data-sid="'+s.id+'" class="pmp-sl">'+(s.grade?'<span style="font-size:10px;color:#7A9E8E;margin-right:2px">'+s.grade+'</span>':'')+s.name+'</span></td>'
-          +'<td style="font-size:12px;color:#5A8070">'+slot.day+'요일'+(slot.time?' <span style="font-size:11px">'+slot.time+'</span>':'')+'</td>'
-          +'<td style="text-align:center"><button class="pmp-ab" data-sid="'+s.id+'" data-ak="'+akey+'" data-atk="'+attKey+'" data-val="O" style="padding:4px 10px;font-size:12px;border-radius:5px;cursor:pointer;font-family:var(--font);border:1.5px solid '+(att==='O'?'#2D9B6A;background:#2D9B6A;color:#fff;font-weight:700':'#B2D8C4;background:#fff;color:#5A8070')+'">✓ 참여</button></td>'
-          +'<td style="text-align:center"><button class="pmp-ab" data-sid="'+s.id+'" data-ak="'+akey+'" data-atk="'+attKey+'" data-val="X" style="padding:4px 10px;font-size:12px;border-radius:5px;cursor:pointer;font-family:var(--font);border:1.5px solid '+(att==='X'?'#E74C3C;background:#E74C3C;color:#fff;font-weight:700':'#F5B7B1;background:#fff;color:#922B21')+'">✗ 불참</button></td>'
-          +'<td><input class="pmp-mi" data-sid="'+s.id+'" data-mk="'+akey+'Memo" data-atk="'+attKey+'" value="'+memo.replace(/"/g,'&quot;')+'" placeholder="메모..." style="width:100%;padding:4px 7px;font-size:12px;border:1px solid #D4EDE0;border-radius:5px;background:#F5FCF7;font-family:var(--font)"></td>'
-          +'<td><button class="pmp-del-slot" data-sid="'+s.id+'" data-si="'+si+'" title="시간표에서 영구 삭제" style="background:none;border:none;cursor:pointer;color:#CBD5E1;font-size:13px;padding:2px 5px" onmouseover="this.style.color=\'#EF4444\'" onmouseout="this.style.color=\'#CBD5E1\'">✕</button></td>'
-          +'</tr>';
-      });
-    });
-    attHTML+='</tbody></table>';
-    attCard.innerHTML=attHTML;mc.appendChild(attCard);
-    attCard.querySelectorAll('.pmp-sl').forEach(function(el){el.addEventListener('click',function(){selStu2(parseInt(this.dataset.sid));});});
-    attCard.querySelectorAll('.pmp-ab').forEach(function(btn){
-      btn.addEventListener('click',function(){
-        var s=gs(parseInt(this.dataset.sid));if(!s)return;
-        var ak=this.dataset.ak,atk=this.dataset.atk,val=this.dataset.val;
-        if(!s[ak])s[ak]={};
-        if(s[ak][atk]===val)delete s[ak][atk];else s[ak][atk]=val;
-        saveData();rPMP();
-      });
-    });
-    attCard.querySelectorAll('.pmp-mi').forEach(function(inp){
-      inp.addEventListener('change',function(){
-        var s=gs(parseInt(this.dataset.sid));if(!s)return;
-        var mk=this.dataset.mk,atk=this.dataset.atk,val=this.value;
-        if(!s[mk])s[mk]={};if(!val)delete s[mk][atk];else s[mk][atk]=val;saveData();
-      });
-    });
-    attCard.querySelectorAll('.pmp-del-slot').forEach(function(btn){
-      btn.addEventListener('click',function(){
-        if(!confirm('PMP 시간표에서 이 학생의 슬롯을 영구 삭제할까요?\n(출석 기록도 함께 삭제됩니다)'))return;
-        var s=gs(parseInt(this.dataset.sid));if(!s||!s[skey])return;
-        var si=parseInt(this.dataset.si);
-        s[skey].splice(si,1);
-        // 관련 출석 기록도 삭제
-        if(s[akey]){Object.keys(s[akey]).forEach(function(k){if(k.endsWith('_'+si))delete s[akey][k];});}
-        if(s[akey+'Memo']){Object.keys(s[akey+'Memo']).forEach(function(k){if(k.endsWith('_'+si))delete s[akey+'Memo'][k];});}
-        saveData();T('슬롯 삭제 완료');rPMP();
-      });
-    });
-  } else {
-    var empty=document.createElement('div');empty.className='card';
-    empty.style.cssText='text-align:center;color:#7A9E8E;padding:32px';
-    empty.innerHTML='<div style="font-size:32px;margin-bottom:8px">📖</div><div>등록된 PMP 일정이 없어요</div>';
-    mc.appendChild(empty);
-  }
+  html+='</tbody></table></div></div>';
+  mc.innerHTML=html;
 }
 
 
