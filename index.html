@@ -355,6 +355,7 @@ function applyLoaded(p){
     totalTest:s.totalTest||{score:'',date:''},
     textbooks:s.textbooks||[],consultations:s.consultations||[],
     notes:s.notes||'',retireDate:s.retireDate||'',retireReason:s.retireReason||'',
+    wcSchedule:s.wcSchedule||'',pmpSchedule:s.pmpSchedule||'',clinicNote:s.clinicNote||'',
     feedbackHistory:s.feedbackHistory||[],
     fbNotes:s.fbNotes||{},
       timeOverrides:s.timeOverrides||{},
@@ -393,6 +394,7 @@ function loadData(){
       totalTest:s.totalTest||{score:'',date:''},
       textbooks:s.textbooks||[],consultations:s.consultations||[],
       notes:s.notes||'',retireDate:s.retireDate||'',retireReason:s.retireReason||'',
+      wcSchedule:s.wcSchedule||'',pmpSchedule:s.pmpSchedule||'',clinicNote:s.clinicNote||'',
       feedbackHistory:s.feedbackHistory||[],
       fbNotes:s.fbNotes||{},
       timeOverrides:s.timeOverrides||{},
@@ -1397,6 +1399,13 @@ function infoT(s){
 
   // 특이사항
   h+='<div class="card" style="margin-top:12px"><div style="font-size:11px;font-weight:500;color:#5A8070;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">특이사항</div><div class="fl"><textarea rows="4" placeholder="학생 특이사항, 학부모 요청사항 등..." onchange="upF('+s.id+',\'notes\',this.value)">'+escHtml(s.notes||'')+'</textarea></div></div>';
+
+  // 주말클리닉 / PMP
+  h+='<div class="card" style="margin-top:12px">';
+  h+='<div style="font-size:11px;font-weight:500;color:#5A8070;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">주말클리닉 · PMP</div>';
+  h+='<div class="fl" style="margin-bottom:8px"><label>주말클리닉 일정</label><input value="'+escHtml(s.wcSchedule||'')+'" placeholder="예) 토 1-3시, 일 2-4시" onchange="upF('+s.id+',\'wcSchedule\',this.value)"></div>';
+  h+='<div class="fl"><label>PMP 일정</label><input value="'+escHtml(s.pmpSchedule||'')+'" placeholder="예) 월수 5:30-6:00" onchange="upF('+s.id+',\'pmpSchedule\',this.value)"></div>';
+  h+='</div>';
   h+='</div>'; // 오른쪽 끝
 
   h+='</div>'; // 2단 끝
@@ -2050,7 +2059,7 @@ function rClinic(){
   active.forEach(function(s){
     var schDays=[...new Set(getStuDays(s))].sort().map(function(d){return ['일','월','화','수','목','금','토'][d];}).join(', ');
     var wcSlots=(s.wcSlots||[]);
-    var wcLabel=wcSlots.length?wcSlots.map(function(sl){return sl.day+(sl.time?' '+sl.time:'');}).join(', '):'-';
+    var wcLabel=(s.wcSchedule||'') || (wcSlots.length?wcSlots.map(function(sl){return sl.day+(sl.time?' '+sl.time:'');}).join(', '):'-');
     var note=(s.clinicNote||'');
     var checked=window._clinicChecks[s.id]||false;
     html+='<tr style="background:'+(checked?'#F0FAF4':'#fff')+'">'
