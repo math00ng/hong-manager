@@ -259,6 +259,13 @@ const DAY_COMBOS=[
 ];
 const ECOLS=['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#0891B2','#BE185D'];
 const TC={'신규상담':['#DFF0E8','#1B6B46'],'첫 등원':['#C8F0DA','#0D5C3A'],'월간상담':['#E0F5EB','#1B5E3B'],'학부모상담':['#FEF9E7','#7D5A00'],'기타':['#EEF5F1','#4A7060']};
+const EXAM_SCHEDULE=[
+  {school:'해강중',students:['박동훈','박승원','장현우','정서윤','이제민'],start:'2025-06-23',end:'2025-06-25',color:'#7C3AED'},
+  {school:'해운대여중',students:['서유현'],start:'2025-07-01',end:'2025-07-01',color:'#059669'},
+  {school:'동아중',students:['변재원'],start:'2025-06-30',end:'2025-07-02',color:'#D97706'},
+  {school:'해강고',students:['정혜윤'],start:'2025-06-25',end:'2025-06-30',color:'#DC2626'},
+  {school:'양운고',students:['김세은'],start:'2025-06-29',end:'2025-07-03',color:'#0891B2'},
+];
 const LEGACY={'mwf-1':{days:[1,3,5],time:'4:00-6:00'},'mwf-2':{days:[1,3,5],time:'6:00-8:00'},'mwf-3':{days:[1,3,5],time:'8:00-10:00'},'ttf-1':{days:[2,4],time:'4:30-6:30'},'ttf-2':{days:[2,4],time:'6:30-8:30'},'ttf-3':{days:[2,4],time:'8:30-10:30'}};
 
 function ld(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
@@ -1943,8 +1950,89 @@ function rExam(){
   if(!window._examData)window._examData=[];
   const data=window._examData;
   let html='';
+
+  // ── 시험 캘린더 ──
+  function buildExamCal(year,month){
+    const ym=year+'-'+String(month+1).padStart(2,'0');
+    const firstDow=new Date(year,month,1).getDay();
+    const lastDate=new Date(year,month+1,0).getDate();
+    const td=today();
+    let cal='<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
+    cal+='<thead><tr>';
+    ['일','월','화','수','목','금','토'].forEach((d,i)=>{
+      cal+='<th style="padding:4px 0;font-size:10px;color:'+(i===0?'#E74C3C':i===6?'#2980B9':'#5A8070')+';text-align:center;font-weight:500">'+d+'</th>';
+    });
+    cal+='</tr></thead><tbody>';
+    let cells=[];
+    for(let i=0;i<firstDow;i++)cells.push(null);
+    for(let d=1;d<=lastDate;d++)cells.push(d);
+    while(cells.length%7!==0)cells.push(null);
+    for(let r=0;r<cells.length/7;r++){
+      cal+='<tr>';
+      for(let c=0;c<7;c++){
+        const day=cells[r*7+c];
+        if(!day){cal+='<td style="height:52px;border:1px solid #EAF5EE;background:#FAFAFA"></td>';continue;}
+        const dateStr=ym+'-'+String(day).padStart(2,'0');
+        const isToday=dateStr===td;
+        const exams=EXAM_SCHEDULE.filter(ex=>dateStr>=ex.start&&dateStr<=ex.end);
+        const isFirst=ex=>ex.start===dateStr;
+        cal+='<td style="height:52px;border:1px solid #EAF5EE;padding:2px 3px;vertical-align:top;background:'+(isToday?'#F0FAF4':'#fff')+'">';
+        cal+='<div style="font-size:10px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'#2D9B6A':c===0?'#E74C3C':c===6?'#2980B9':'#2D5044')+';margin-bottom:1px">'+day+'</div>';
+        exams.forEach(ex=>{
+          cal+='<div style="background:'+ex.color+'22;border-left:2px solid '+ex.color+';border-radius:2px;padding:1px 3px;font-size:9px;color:'+ex.color+';font-weight:600;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(isFirst(ex)?ex.school:'▶ '+ex.school)+'</div>';
+        });
+        cal+='</td>';
+      }
+      cal+='</tr>';
+    }
+    cal+='</tbody></table>';
+    return cal;
+  }
+
+  html+='<div class="card" style="margin-bottom:14px">';
+  html+='<div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:12px">📅 시험 일정 캘린더</div>';
+  // 범례
+  html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">';
+  EXAM_SCHEDULE.forEach(ex=>{
+    html+='<div style="display:flex;align-items:center;gap:5px;font-size:12px;color:#2D5044">'
+      +'<div style="width:10px;height:10px;border-radius:2px;background:'+ex.color+'22;border-left:3px solid '+ex.color+'"></div>'
+      +'<span style="font-weight:600">'+ex.school+'</span>'
+      +'<span style="color:#7A9E8E;font-size:11px">'+ex.students.join(', ')+'</span>'
+      +'</div>';
+  });
+  html+='</div>';
+  // 6월 + 7월 나란히
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+  html+='<div><div style="font-size:12px;font-weight:600;color:#5A8070;margin-bottom:7px;text-align:center">6월</div>'+buildExamCal(2025,5)+'</div>';
+  html+='<div><div style="font-size:12px;font-weight:600;color:#5A8070;margin-bottom:7px;text-align:center">7월</div>'+buildExamCal(2025,6)+'</div>';
+  html+='</div>';
+  // 시험별 상세 리스트
+  html+='<div style="margin-top:12px;border-top:1px solid #EAF5EE;padding-top:10px">';
+  html+='<div style="font-size:11px;font-weight:600;color:#5A8070;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">상세 일정</div>';
+  EXAM_SCHEDULE.forEach(ex=>{
+    const sd=ld(ex.start),ed=ld(ex.end);
+    const same=ex.start===ex.end;
+    const range=same?((sd.getMonth()+1)+'/'+sd.getDate())
+      :((sd.getMonth()+1)+'/'+sd.getDate()+' ~ '+(ed.getMonth()+1)+'/'+ed.getDate());
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #EAF5EE">'
+      +'<div style="width:4px;height:32px;background:'+ex.color+';border-radius:2px;flex-shrink:0"></div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:13px;font-weight:600;color:#1A3028">'+ex.school+'</div>'
+      +'<div style="font-size:11px;color:'+ex.color+';font-weight:500">'+range+'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end">'
+      +ex.students.map(n=>{
+        const stu=students.find(s=>s.name===n&&s.active!==false);
+        return stu?'<button onclick="selStu2('+stu.id+')" style="padding:2px 8px;border-radius:10px;border:1px solid '+ex.color+'44;background:'+ex.color+'15;font-size:11px;color:'+ex.color+';cursor:pointer;font-family:var(--font)">'+n+'</button>':'<span style="padding:2px 8px;border-radius:10px;border:1px dashed #D4EDE0;font-size:11px;color:#94A3B8">'+n+'</span>';
+      }).join('')
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+  html+='</div>'; // end 캘린더 card
+
   if(!data.length){
-    html='<div class="card" style="text-align:center;padding:32px;color:#7A9E8E"><div style="font-size:32px;margin-bottom:10px">📝</div><div style="font-size:14px;font-weight:500;margin-bottom:6px">내신대비 학교를 추가해보세요</div><div style="font-size:12px">학교별 출판사, 시험기간, 시험날짜를 관리할 수 있어요</div><div style="display:flex;gap:5px;justify-content:center;margin-top:14px;flex-wrap:wrap"><button class="btn p" onclick="autoFillExamSchools()">📥 학생 학교에서 자동 추가</button><button class="btn" onclick="addExamSchool()">+ 학교 직접 추가</button></div></div>';
+    html+='<div class="card" style="text-align:center;padding:32px;color:#7A9E8E"><div style="font-size:32px;margin-bottom:10px">📝</div><div style="font-size:14px;font-weight:500;margin-bottom:6px">내신대비 학교를 추가해보세요</div><div style="font-size:12px">학교별 출판사, 시험기간, 시험날짜를 관리할 수 있어요</div><div style="display:flex;gap:5px;justify-content:center;margin-top:14px;flex-wrap:wrap"><button class="btn p" onclick="autoFillExamSchools()">📥 학생 학교에서 자동 추가</button><button class="btn" onclick="addExamSchool()">+ 학교 직접 추가</button></div></div>';
   } else {
     data.forEach((school,si)=>{
       html+=`<div class="card" style="margin-bottom:12px">
@@ -1969,6 +2057,7 @@ function rExam(){
   }
   document.getElementById('mc').innerHTML=html;
 }
+
 function addExamSchool(){
   if(!window._examData)window._examData=[];
   window._examData.push({name:'',publisher:'',examPeriod:'',mathDate:'',memo:''});
