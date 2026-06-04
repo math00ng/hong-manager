@@ -1204,22 +1204,21 @@ function buildFB(name,dateStr,book,hw,note,dScore,wScore){
   lines.push('수업일 | '+dateStr);
   lines.push('');
   lines.push('교재 | '+(book||''));
-  lines.push('과제 | '+(hw||''));
   lines.push('');
-  // 일일TEST
+  // 일일TEST - 입력값 있을 때만 표시
   if(dScore==='없음'){lines.push('일일TEST | X');}
   else if(dScore&&(dScore.correct!=null&&dScore.correct!==''||dScore.total!=null&&dScore.total!=='')){
     const c=dScore.correct!=null&&dScore.correct!==''?dScore.correct:'';
     const t=dScore.total!=null&&dScore.total!==''?dScore.total:'';
     lines.push('일일TEST | '+c+(t?'/'+t:''));
-  } else {lines.push('일일TEST | ');}
-  // 주간TEST
+  }
+  // 주간TEST - 입력값 있을 때만 표시
   if(wScore==='없음'){lines.push('주간TEST | X');}
   else if(wScore&&(wScore.correct!=null&&wScore.correct!==''||wScore.total!=null&&wScore.total!=='')){
     const c=wScore.correct!=null&&wScore.correct!==''?wScore.correct:'';
     const t=wScore.total!=null&&wScore.total!==''?wScore.total:'';
     lines.push('주간TEST | '+c+(t?'/'+t:''));
-  } else {lines.push('주간TEST | ');}
+  }
   lines.push('');
   lines.push('특이사항 | '+(note||''));
   lines.push('');
