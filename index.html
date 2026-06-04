@@ -702,28 +702,62 @@ function rHome(){
   html+='</div>';
 
   // ── PMP 시간표 ──
-  const pmpDayMap_={'월':[],'화':[],'수':[],'목':[],'금':[]};
+  const _go={'초1':1,'초2':2,'초3':3,'초4':4,'초5':5,'초6':6,'중1':7,'중2':8,'중3':9,'고1':10,'고2':11,'고3':12};
+  const todayKo_=['일','월','화','수','목','금','토'][ld(today()).getDay()];
+  const pmpDayMap_={'월':[],'화':[],'수':[],'목':[],'금':[],'토':[],'일':[]};
   students.filter(s=>s.active!==false).forEach(s=>{
     (s.pmpSlots||[]).forEach(slot=>{
       if(pmpDayMap_[slot.day])pmpDayMap_[slot.day].push({s,slot});
     });
   });
-  const pmpActiveDays_=['월','화','수','목','금'].filter(d=>pmpDayMap_[d].length>0);
-  const todayKo_=['일','월','화','수','목','금','토'][ld(today()).getDay()];
+  const pmpActiveDays_=['월','화','수','목','금','토','일'].filter(d=>pmpDayMap_[d].length>0);
   if(pmpActiveDays_.length){
     html+='<div class="card" style="margin-bottom:14px;overflow-x:auto"><div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:10px">📖 PMP 시간표</div>';
     html+='<div style="display:grid;grid-template-columns:repeat('+pmpActiveDays_.length+',1fr);gap:6px">';
-    const _go={'초1':1,'초2':2,'초3':3,'초4':4,'초5':5,'초6':6,'중1':7,'중2':8,'중3':9,'고1':10,'고2':11,'고3':12};
     pmpActiveDays_.forEach(day=>{
       const isToday=todayKo_===day;
-      const stus=pmpDayMap_[day].sort((a,b)=>(_go[a.s.grade]||99)-(_go[b.s.grade]||99));
+      const isWeekend=day==='토'||day==='일';
+      const headerBg=isToday?'#1E40AF':isWeekend?'#C7D2FE':'#DBEAFE';
+      const headerCol=isToday?'#fff':isWeekend?'#3730A3':'#1E40AF';
+      const stus=pmpDayMap_[day].slice().sort((a,b)=>(_go[a.s.grade]||99)-(_go[b.s.grade]||99));
       html+='<div style="border-radius:var(--rs);overflow:hidden">'
-        +'<div style="background:'+(isToday?'#1E40AF':'#DBEAFE')+';color:'+(isToday?'#fff':'#1E40AF')+';font-size:12px;font-weight:700;text-align:center;padding:5px 0">'+day+' <span style="font-size:10px;font-weight:400">'+stus.length+'명</span></div>'
+        +'<div style="background:'+headerBg+';color:'+headerCol+';font-size:12px;font-weight:700;text-align:center;padding:5px 0">'+day+' <span style="font-size:10px;font-weight:400">'+stus.length+'명</span></div>'
         +'<div style="background:#F8FBFF;min-height:50px;padding:5px">';
       stus.forEach(({s,slot})=>{
         html+='<div onclick="selStu2('+s.id+')" style="font-size:11px;color:#1A3028;padding:2px 4px;border-radius:3px;cursor:pointer;margin-bottom:2px;background:#fff;border:1px solid #BFDBFE">'
           +(s.grade?'<span style="font-size:9px;color:#3B82F6;margin-right:2px">'+s.grade+'</span>':'')+s.name
           +(slot.time?'<div style="font-size:9px;color:#6B7280">'+slot.time+'</div>':'')
+          +'</div>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div></div>';
+  }
+
+  // ── 주말클리닉 시간표 ──
+  const wcDayMap_={'월':[],'화':[],'수':[],'목':[],'금':[],'토':[],'일':[]};
+  students.filter(s=>s.active!==false).forEach(s=>{
+    (s.wcSlots||[]).forEach(slot=>{
+      if(wcDayMap_[slot.day])wcDayMap_[slot.day].push({s,slot});
+    });
+  });
+  const wcActiveDays_=['월','화','수','목','금','토','일'].filter(d=>wcDayMap_[d].length>0);
+  if(wcActiveDays_.length){
+    html+='<div class="card" style="margin-bottom:14px;overflow-x:auto"><div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:10px">🏋️ 주말클리닉 시간표</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat('+wcActiveDays_.length+',1fr);gap:6px">';
+    wcActiveDays_.forEach(day=>{
+      const isToday=todayKo_===day;
+      const isWeekend=day==='토'||day==='일';
+      const headerBg=isToday?'#2D9B6A':isWeekend?'#A7E0C2':'#D5EEE2';
+      const headerCol=isToday?'#fff':isWeekend?'#0D5C3A':'#1B6B46';
+      const stus=wcDayMap_[day].slice().sort((a,b)=>(_go[a.s.grade]||99)-(_go[b.s.grade]||99));
+      html+='<div style="border-radius:var(--rs);overflow:hidden">'
+        +'<div style="background:'+headerBg+';color:'+headerCol+';font-size:12px;font-weight:700;text-align:center;padding:5px 0">'+day+' <span style="font-size:10px;font-weight:400">'+stus.length+'명</span></div>'
+        +'<div style="background:#F5FCF7;min-height:50px;padding:5px">';
+      stus.forEach(({s,slot})=>{
+        html+='<div onclick="selStu2('+s.id+')" style="font-size:11px;color:#1A3028;padding:2px 4px;border-radius:3px;cursor:pointer;margin-bottom:2px;background:#fff;border:1px solid #A7E0C2">'
+          +(s.grade?'<span style="font-size:9px;color:#2D9B6A;margin-right:2px">'+s.grade+'</span>':'')+s.name
+          +(slot.time?'<div style="font-size:9px;color:#5A8070">'+slot.time+'</div>':'')
           +'</div>';
       });
       html+='</div></div>';
@@ -2126,101 +2160,211 @@ function initClinicSlots(){
 
 function rClinic(){
   document.getElementById('tp-t').textContent='🏋️ 주말클리닉';
-  document.getElementById('tp-a').innerHTML='';
+  document.getElementById('tp-a').innerHTML='<button class="btn s d" onclick="if(confirm(\'시험지 체크를 모두 초기화할까요?\')){{window._clinicChecks={};rClinic();}}">체크 초기화</button>';
   var gradeOrder={'초1':1,'초2':2,'초3':3,'초4':4,'초5':5,'초6':6,'중1':7,'중2':8,'중3':9,'고1':10,'고2':11,'고3':12};
   var active=students.filter(function(s){return s.active!==false;}).sort(function(a,b){return (gradeOrder[a.grade]||99)-(gradeOrder[b.grade]||99)||a.name.localeCompare(b.name,'ko');});
   if(!window._clinicChecks)window._clinicChecks={};
+  var DAYS=['월','화','수','목','금','토','일'];
+  // 요일별 학생 맵
+  var dayMap={};
+  DAYS.forEach(function(d){dayMap[d]=[];});
+  active.forEach(function(s){
+    (s.wcSlots||[]).forEach(function(slot){
+      if(slot.day&&dayMap[slot.day])dayMap[slot.day].push({s:s,slot:slot});
+    });
+    // wcSlots 없고 wcSchedule만 있는 경우
+    if(!(s.wcSlots&&s.wcSlots.length)&&s.wcSchedule){
+      // 요일 파싱 시도 (예: "토 15:00-17:00")
+      DAYS.forEach(function(d){
+        if(s.wcSchedule.includes(d))dayMap[d].push({s:s,slot:{day:d,time:'',memo:''}});
+      });
+    }
+  });
+  var activeDays=DAYS.filter(function(d){return dayMap[d].length>0;});
+  var todayKo=['일','월','화','수','목','금','토'][new Date().getDay()];
 
   var mc=document.getElementById('mc');
-  var html='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-    +'<span style="font-size:13px;font-weight:600;color:#1A3028">주말클리닉 현황</span>'
-    +'<button class="btn s d" onclick="if(confirm(\'시험지 체크를 모두 초기화할까요?\')){{window._clinicChecks={};rClinic();}}">체크 초기화</button>'
+  var html='';
+
+  // ── 요약 배지 ──
+  var totalStu=new Set();
+  active.forEach(function(s){if((s.wcSlots||[]).length||(s.wcSchedule))totalStu.add(s.id);});
+  var checked=Object.values(window._clinicChecks).filter(Boolean).length;
+  html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+    +'<div style="background:#E0F5EB;border:1px solid #A7E0C2;border-radius:var(--r);padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:700;color:#0D6B3A">'+activeDays.length+'</div><div style="font-size:11px;color:#5A8070">운영 요일</div></div>'
+    +'<div style="background:#E0F5EB;border:1px solid #A7E0C2;border-radius:var(--r);padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:700;color:#0D6B3A">'+totalStu.size+'</div><div style="font-size:11px;color:#5A8070">참여 학생</div></div>'
+    +'<div style="background:'+(checked?'#D5F5E3':'#F5FCF7')+';border:1px solid '+(checked?'#6EE7A7':'#D4EDE0')+';border-radius:var(--r);padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:700;color:'+(checked?'#0D6B3A':'#7A9E8E')+'">'+checked+'</div><div style="font-size:11px;color:#5A8070">시험지 완료</div></div>'
+    +'</div>';
+
+  // ── 요일별 시간표 ──
+  if(!activeDays.length){
+    html+='<div class="card" style="text-align:center;color:#7A9E8E;padding:32px">등록된 주말클리닉 일정이 없습니다<br><span style="font-size:12px">학생 기본정보 탭에서 주말클리닉 일정을 등록해주세요</span></div>';
+  } else {
+    html+='<div style="display:grid;grid-template-columns:repeat('+activeDays.length+',1fr);gap:10px">';
+    activeDays.forEach(function(day){
+      var isToday=todayKo===day;
+      var entries=dayMap[day].slice().sort(function(a,b){
+        // 시간순 정렬
+        var ta=a.slot.time||'99:99',tb=b.slot.time||'99:99';
+        return ta>tb?1:-1;
+      });
+      html+='<div style="background:#fff;border:1px solid '+(isToday?'#2D9B6A':'#D4EDE0')+';border-radius:var(--r);overflow:hidden">';
+      html+='<div style="background:'+(isToday?'#2D9B6A':'#D5EEE2')+';padding:8px 12px;display:flex;align-items:center;justify-content:space-between">'
+        +'<span style="font-size:13px;font-weight:700;color:'+(isToday?'#fff':'#1B6B46')+'">'+day+'요일</span>'
+        +'<span style="font-size:11px;padding:1px 7px;border-radius:10px;background:'+(isToday?'rgba(255,255,255,.25)':'#B8DECA')+';color:'+(isToday?'#fff':'#1B6B46')+'">'+entries.length+'명</span>'
+        +'</div>';
+      html+='<div style="padding:8px">';
+      // 시간대별 그룹핑
+      var timeGroups={};
+      entries.forEach(function(e){
+        var t=e.slot.time||'시간미정';
+        if(!timeGroups[t])timeGroups[t]=[];
+        timeGroups[t].push(e);
+      });
+      Object.keys(timeGroups).sort().forEach(function(time){
+        var grp=timeGroups[time];
+        if(time!=='시간미정')html+='<div style="font-size:10px;color:#7A9E8E;font-weight:600;margin:6px 0 3px;padding-left:2px">'+time+'</div>';
+        grp.forEach(function(e){
+          var s=e.s;
+          var chk=window._clinicChecks[s.id]||false;
+          html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:'+(chk?'#E0F5EB':'#F5FCF7')+';border:1px solid '+(chk?'#86D4A8':'#D4EDE0')+'">'
+            +'<input type="checkbox" '+(chk?'checked':'')+' onchange="window._clinicChecks['+s.id+']=this.checked;rClinic()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--acc);flex-shrink:0">'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="display:flex;align-items:center;gap:4px">'
+            +'<button class="lb" onclick="selStu2('+s.id+')" style="font-size:13px;font-weight:600">'+s.name+'</button>'
+            +(s.grade?'<span style="font-size:10px;color:#94A3B8">'+s.grade+'</span>':'')
+            +'</div>'
+            +(s.clinicNote?'<div style="font-size:10px;color:#5A8070;margin-top:1px">'+escHtml(s.clinicNote)+'</div>':'')
+            +'</div>'
+            +(chk?'<span style="font-size:10px;color:#0D6B3A;font-weight:600">✓</span>':'')
+            +'</div>';
+        });
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
+
+  // ── 특이사항 입력 테이블 (접힌 형태) ──
+  html+='<div class="card" style="margin-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="var b=document.getElementById(\'wc-notes-body\');b.style.display=b.style.display===\'none\'?\'block\':\'none\'">'
+    +'<span style="font-size:12px;font-weight:600;color:#1A3028">📝 특이사항 메모</span>'
+    +'<span style="font-size:12px;color:#7A9E8E">▾ 펼치기</span>'
     +'</div>'
-    +'<div style="overflow-x:auto"><table>'
-    +'<thead><tr>'
-    +'<th style="min-width:70px">이름</th>'
-    +'<th style="min-width:80px">수업요일</th>'
-    +'<th style="min-width:120px">주말클리닉</th>'
-    +'<th style="min-width:140px">특이사항</th>'
-    +'<th style="min-width:60px;text-align:center">시험지</th>'
-    +'</tr></thead><tbody>';
-
+    +'<div id="wc-notes-body" style="display:none;margin-top:10px">';
   active.forEach(function(s){
-    var schDays=[...new Set(getStuDays(s))].sort().map(function(d){return ['일','월','화','수','목','금','토'][d];}).join(', ');
-    var wcSlots=(s.wcSlots||[]);
-    var wcLabel=(s.wcSchedule||'') || (wcSlots.length?wcSlots.map(function(sl){return sl.day+(sl.time?' '+sl.time:'');}).join(', '):'-');
-    var note=(s.clinicNote||'');
-    var checked=window._clinicChecks[s.id]||false;
-    html+='<tr style="background:'+(checked?'#F0FAF4':'#fff')+'">'
-      +'<td><button class="lb" onclick="selStu2('+s.id+')" style="font-weight:600">'+s.name+'</button>'
-      +(s.grade?'<span style="font-size:10px;color:#94A3B8;margin-left:4px">'+s.grade+'</span>':'')+'</td>'
-      +'<td style="font-size:12px;color:#5A8070">'+schDays+'</td>'
-      +'<td style="font-size:12px;color:#2D5044">'+wcLabel+'</td>'
-      +'<td><input value="'+escHtml(note)+'" placeholder="특이사항..." '
+    if(!(s.wcSlots&&s.wcSlots.length)&&!s.wcSchedule)return;
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<button class="lb" onclick="selStu2('+s.id+')" style="font-size:12px;font-weight:600;min-width:50px">'+s.name+'</button>'
+      +(s.grade?'<span style="font-size:10px;color:#94A3B8;min-width:28px">'+s.grade+'</span>':'')
+      +'<input value="'+escHtml(s.clinicNote||'')+'" placeholder="특이사항..." '
       +'onchange="gs('+s.id+').clinicNote=this.value;saveData()" '
-      +'style="width:100%;padding:4px 7px;font-size:12px;border:1px solid #D4EDE0;border-radius:4px;background:#F5FCF7;color:#1A3028;font-family:var(--font)"></td>'
-      +'<td style="text-align:center">'
-      +'<input type="checkbox" '+(checked?'checked':'')+' '
-      +'onchange="window._clinicChecks['+s.id+']=this.checked;rClinic()" '
-      +'style="width:18px;height:18px;cursor:pointer;accent-color:var(--acc)">'
-      +'</td>'
-      +'</tr>';
+      +'style="flex:1;padding:4px 7px;font-size:12px;border:1px solid #D4EDE0;border-radius:4px;background:#F5FCF7;color:#1A3028;font-family:var(--font)">'
+      +'</div>';
   });
+  html+='</div></div>';
 
-  if(!active.length) html+='<tr><td colspan="5" style="text-align:center;color:#7A9E8E;padding:24px">학생 정보가 없습니다</td></tr>';
-
-  html+='</tbody></table></div></div>';
   mc.innerHTML=html;
 }
-
 function rPMP(){
   document.getElementById('tp-t').textContent='📖 PMP';
-  document.getElementById('tp-a').innerHTML='';
+  document.getElementById('tp-a').innerHTML='<button class="btn s d" onclick="if(confirm(\'시험지 체크를 모두 초기화할까요?\')){{window._pmpChecks={};rPMP();}}">체크 초기화</button>';
   var gradeOrder={'초1':1,'초2':2,'초3':3,'초4':4,'초5':5,'초6':6,'중1':7,'중2':8,'중3':9,'고1':10,'고2':11,'고3':12};
   var active=students.filter(function(s){return s.active!==false;}).sort(function(a,b){return (gradeOrder[a.grade]||99)-(gradeOrder[b.grade]||99)||a.name.localeCompare(b.name,'ko');});
   if(!window._pmpChecks)window._pmpChecks={};
+  var DAYS=['월','화','수','목','금','토','일'];
+  var dayMap={};
+  DAYS.forEach(function(d){dayMap[d]=[];});
+  active.forEach(function(s){
+    (s.pmpSlots||[]).forEach(function(slot){
+      if(slot.day&&dayMap[slot.day])dayMap[slot.day].push({s:s,slot:slot});
+    });
+    if(!(s.pmpSlots&&s.pmpSlots.length)&&s.pmpSchedule){
+      DAYS.forEach(function(d){
+        if(s.pmpSchedule.includes(d))dayMap[d].push({s:s,slot:{day:d,time:'',memo:''}});
+      });
+    }
+  });
+  var activeDays=DAYS.filter(function(d){return dayMap[d].length>0;});
+  var todayKo=['일','월','화','수','목','금','토'][new Date().getDay()];
 
   var mc=document.getElementById('mc');
-  var html='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-    +'<span style="font-size:13px;font-weight:600;color:#1A3028">PMP 현황</span>'
-    +'<button class="btn s d" onclick="if(confirm(\'시험지 체크를 모두 초기화할까요?\')){{window._pmpChecks={};rPMP();}}">체크 초기화</button>'
+  var html='';
+
+  // ── 요약 배지 ──
+  var totalStu=new Set();
+  active.forEach(function(s){if((s.pmpSlots||[]).length||(s.pmpSchedule))totalStu.add(s.id);});
+  var checked=Object.values(window._pmpChecks).filter(Boolean).length;
+  html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+    +'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:var(--r);padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:700;color:#1E40AF">'+activeDays.length+'</div><div style="font-size:11px;color:#5A8070">운영 요일</div></div>'
+    +'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:var(--r);padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:700;color:#1E40AF">'+totalStu.size+'</div><div style="font-size:11px;color:#5A8070">참여 학생</div></div>'
+    +'<div style="background:'+(checked?'#DBEAFE':'#F0F9FF')+';border:1px solid '+(checked?'#93C5FD':'#BAE6FD')+';border-radius:var(--r);padding:10px 16px;text-align:center"><div style="font-size:20px;font-weight:700;color:'+(checked?'#1E40AF':'#7A9E8E')+'">'+checked+'</div><div style="font-size:11px;color:#5A8070">시험지 완료</div></div>'
+    +'</div>';
+
+  if(!activeDays.length){
+    html+='<div class="card" style="text-align:center;color:#7A9E8E;padding:32px">등록된 PMP 일정이 없습니다<br><span style="font-size:12px">학생 기본정보 탭에서 PMP 일정을 등록해주세요</span></div>';
+  } else {
+    html+='<div style="display:grid;grid-template-columns:repeat('+activeDays.length+',1fr);gap:10px">';
+    activeDays.forEach(function(day){
+      var isToday=todayKo===day;
+      var entries=dayMap[day].slice().sort(function(a,b){
+        var ta=a.slot.time||'99:99',tb=b.slot.time||'99:99';
+        return ta>tb?1:-1;
+      });
+      html+='<div style="background:#fff;border:1px solid '+(isToday?'#2563EB':'#BFDBFE')+';border-radius:var(--r);overflow:hidden">';
+      html+='<div style="background:'+(isToday?'#2563EB':'#DBEAFE')+';padding:8px 12px;display:flex;align-items:center;justify-content:space-between">'
+        +'<span style="font-size:13px;font-weight:700;color:'+(isToday?'#fff':'#1E40AF')+'">'+day+'요일</span>'
+        +'<span style="font-size:11px;padding:1px 7px;border-radius:10px;background:'+(isToday?'rgba(255,255,255,.25)':'#BFDBFE')+';color:'+(isToday?'#fff':'#1E40AF')+'">'+entries.length+'명</span>'
+        +'</div>';
+      html+='<div style="padding:8px">';
+      var timeGroups={};
+      entries.forEach(function(e){
+        var t=e.slot.time||'시간미정';
+        if(!timeGroups[t])timeGroups[t]=[];
+        timeGroups[t].push(e);
+      });
+      Object.keys(timeGroups).sort().forEach(function(time){
+        var grp=timeGroups[time];
+        if(time!=='시간미정')html+='<div style="font-size:10px;color:#3B82F6;font-weight:600;margin:6px 0 3px;padding-left:2px">'+time+'</div>';
+        grp.forEach(function(e){
+          var s=e.s;
+          var chk=window._pmpChecks[s.id]||false;
+          html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;margin-bottom:4px;background:'+(chk?'#DBEAFE':'#F0F9FF')+';border:1px solid '+(chk?'#93C5FD':'#BFDBFE')+'">'
+            +'<input type="checkbox" '+(chk?'checked':'')+' onchange="window._pmpChecks['+s.id+']=this.checked;rPMP()" style="width:15px;height:15px;cursor:pointer;accent-color:#3B82F6;flex-shrink:0">'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="display:flex;align-items:center;gap:4px">'
+            +'<button class="lb" onclick="selStu2('+s.id+')" style="font-size:13px;font-weight:600">'+s.name+'</button>'
+            +(s.grade?'<span style="font-size:10px;color:#94A3B8">'+s.grade+'</span>':'')
+            +'</div>'
+            +(s.pmpNote?'<div style="font-size:10px;color:#3B82F6;margin-top:1px">'+escHtml(s.pmpNote)+'</div>':'')
+            +'</div>'
+            +(chk?'<span style="font-size:10px;color:#1E40AF;font-weight:600">✓</span>':'')
+            +'</div>';
+        });
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
+
+  html+='<div class="card" style="margin-top:12px"><div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="var b=document.getElementById(\'pmp-notes-body\');b.style.display=b.style.display===\'none\'?\'block\':\'none\'">'
+    +'<span style="font-size:12px;font-weight:600;color:#1A3028">📝 특이사항 메모</span>'
+    +'<span style="font-size:12px;color:#7A9E8E">▾ 펼치기</span>'
     +'</div>'
-    +'<div style="overflow-x:auto"><table>'
-    +'<thead><tr>'
-    +'<th style="min-width:70px">이름</th>'
-    +'<th style="min-width:80px">수업요일</th>'
-    +'<th style="min-width:120px">PMP 일정</th>'
-    +'<th style="min-width:140px">특이사항</th>'
-    +'<th style="min-width:60px;text-align:center">시험지</th>'
-    +'</tr></thead><tbody>';
-
+    +'<div id="pmp-notes-body" style="display:none;margin-top:10px">';
   active.forEach(function(s){
-    var schDays=[...new Set(getStuDays(s))].sort().map(function(d){return ['일','월','화','수','목','금','토'][d];}).join(', ');
-    var pmpLabel=s.pmpSchedule||'-';
-    var note=s.pmpNote||'';
-    var checked=window._pmpChecks[s.id]||false;
-    html+='<tr style="background:'+(checked?'#EFF6FF':'#fff')+'">'
-      +'<td><button class="lb" onclick="selStu2('+s.id+')" style="font-weight:600">'+s.name+'</button>'
-      +(s.grade?'<span style="font-size:10px;color:#94A3B8;margin-left:4px">'+s.grade+'</span>':'')+'</td>'
-      +'<td style="font-size:12px;color:#5A8070">'+schDays+'</td>'
-      +'<td style="font-size:12px;color:#2D5044">'+pmpLabel+'</td>'
-      +'<td><input value="'+escHtml(note)+'" placeholder="특이사항..." '
+    if(!(s.pmpSlots&&s.pmpSlots.length)&&!s.pmpSchedule)return;
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +'<button class="lb" onclick="selStu2('+s.id+')" style="font-size:12px;font-weight:600;min-width:50px">'+s.name+'</button>'
+      +(s.grade?'<span style="font-size:10px;color:#94A3B8;min-width:28px">'+s.grade+'</span>':'')
+      +'<input value="'+escHtml(s.pmpNote||'')+'" placeholder="특이사항..." '
       +'onchange="gs('+s.id+').pmpNote=this.value;saveData()" '
-      +'style="width:100%;padding:4px 7px;font-size:12px;border:1px solid #D4EDE0;border-radius:4px;background:#F5FCF7;color:#1A3028;font-family:var(--font)"></td>'
-      +'<td style="text-align:center">'
-      +'<input type="checkbox" '+(checked?'checked':'')+' '
-      +'onchange="window._pmpChecks['+s.id+']=this.checked;rPMP()" '
-      +'style="width:18px;height:18px;cursor:pointer;accent-color:#3B82F6">'
-      +'</td>'
-      +'</tr>';
+      +'style="flex:1;padding:4px 7px;font-size:12px;border:1px solid #D4EDE0;border-radius:4px;background:#F5FCF7;color:#1A3028;font-family:var(--font)">'
+      +'</div>';
   });
+  html+='</div></div>';
 
-  if(!active.length) html+='<tr><td colspan="5" style="text-align:center;color:#7A9E8E;padding:24px">학생 정보가 없습니다</td></tr>';
-
-  html+='</tbody></table></div></div>';
   mc.innerHTML=html;
 }
-
 
 function getLastClinicSummary(s){
   var lines=[];var now=new Date();var dow=now.getDay();
