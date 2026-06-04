@@ -743,22 +743,39 @@ function rHome(){
   });
   const wcActiveDays_=['월','화','수','목','금','토','일'].filter(d=>wcDayMap_[d].length>0);
   if(wcActiveDays_.length){
-    html+='<div class="card" style="margin-bottom:14px;overflow-x:auto"><div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:10px">🏋️ 주말클리닉 시간표</div>';
-    html+='<div style="display:grid;grid-template-columns:repeat('+wcActiveDays_.length+',1fr);gap:6px">';
+    html+='<div class="card" style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:10px">🏋️ 주말클리닉 시간표</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat('+wcActiveDays_.length+',1fr);gap:10px">';
     wcActiveDays_.forEach(day=>{
       const isToday=todayKo_===day;
       const isWeekend=day==='토'||day==='일';
       const headerBg=isToday?'#2D9B6A':isWeekend?'#A7E0C2':'#D5EEE2';
       const headerCol=isToday?'#fff':isWeekend?'#0D5C3A':'#1B6B46';
-      const stus=wcDayMap_[day].slice().sort((a,b)=>(_go[a.s.grade]||99)-(_go[b.s.grade]||99));
-      html+='<div style="border-radius:var(--rs);overflow:hidden">'
-        +'<div style="background:'+headerBg+';color:'+headerCol+';font-size:12px;font-weight:700;text-align:center;padding:5px 0">'+day+' <span style="font-size:10px;font-weight:400">'+stus.length+'명</span></div>'
-        +'<div style="background:#F5FCF7;min-height:50px;padding:5px">';
-      stus.forEach(({s,slot})=>{
-        html+='<div onclick="selStu2('+s.id+')" style="font-size:11px;color:#1A3028;padding:2px 4px;border-radius:3px;cursor:pointer;margin-bottom:2px;background:#fff;border:1px solid #A7E0C2">'
-          +(s.grade?'<span style="font-size:9px;color:#2D9B6A;margin-right:2px">'+s.grade+'</span>':'')+s.name
-          +(slot.time?'<div style="font-size:9px;color:#5A8070">'+slot.time+'</div>':'')
-          +'</div>';
+      // 시간순 정렬
+      const sorted=wcDayMap_[day].slice().sort((a,b)=>{
+        const ta=a.slot.time||'99:99', tb=b.slot.time||'99:99';
+        return ta>tb?1:ta<tb?-1:0;
+      });
+      // 시간대별 그룹핑
+      const timeGroups={};
+      sorted.forEach(({s,slot})=>{
+        const t=slot.time||'시간미정';
+        if(!timeGroups[t])timeGroups[t]=[];
+        timeGroups[t].push({s,slot});
+      });
+      const totalCount=sorted.length;
+      html+='<div style="border-radius:var(--r);overflow:hidden;border:1px solid '+(isToday?'#2D9B6A':'#B8DECA')+'">';
+      html+='<div style="background:'+headerBg+';color:'+headerCol+';font-size:12px;font-weight:700;padding:7px 10px;display:flex;justify-content:space-between;align-items:center">'+day+'요일<span style="font-size:10px;font-weight:400;opacity:.85">'+totalCount+'명</span></div>';
+      html+='<div style="background:#F5FCF7;padding:8px">';
+      Object.keys(timeGroups).sort().forEach(time=>{
+        const grp=timeGroups[time];
+        // 시간대 헤더
+        html+='<div style="font-size:10px;font-weight:700;color:'+(isToday?'#2D9B6A':'#1B6B46')+';background:'+(isToday?'#D5EEE2':'#E0F5EB')+';border-radius:4px;padding:2px 7px;margin-bottom:4px;margin-top:4px">⏰ '+time+'</div>';
+        grp.forEach(({s,slot})=>{
+          html+='<div onclick="selStu2('+s.id+')" style="font-size:12px;color:#1A3028;padding:4px 7px;border-radius:4px;cursor:pointer;margin-bottom:3px;background:#fff;border:1px solid #C8E6D4;display:flex;align-items:center;gap:4px">'
+            +(s.grade?'<span style="font-size:10px;color:#2D9B6A;font-weight:600">'+s.grade+'</span>':'')
+            +'<span style="font-weight:500">'+s.name+'</span>'
+            +'</div>';
+        });
       });
       html+='</div></div>';
     });
@@ -816,17 +833,8 @@ function rToday(){
         if(noW){html+='<span style="font-size:10px;color:#7A9E8E">없음</span>';}
         else{html+='<input type="number" min="0" max="100" placeholder="맞" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.correct!=null?wScore.correct:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'correct\',this.value)"><span style="font-size:10px;color:#7A9E8E">/</span><input type="number" min="0" max="100" placeholder="전" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.total!=null?wScore.total:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'total\',this.value)">';}
         html+='<button class="at'+(noW?' 없음':'')+'" style="font-size:9px;padding:2px 5px;margin-left:auto" onclick="toggleNo('+s.id+',\'weekly\',\''+vd+'\')">없음</button></div>';
-        html+='<input placeholder="과제..." value="'+hw+'" style="width:100%;padding:4px 7px;font-size:11px;border:1px solid #FAD76A;border-radius:var(--rs);background:#FEF9E7;color:#1A3028" onchange="setHW('+s.id+',\''+vd+'\',this.value)">';
         const _todayNote=(s.fbNotes||{})[vd]||'';
         html+='<input placeholder="특이사항..." value="'+escHtml(_todayNote)+'" style="width:100%;padding:4px 7px;font-size:11px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#F5FCF7;color:#1A3028" onchange="setTodayNote('+s.id+',\''+vd+'\',this.value)">';
-        // 지난 과제 (직전 등원일)
-        const _prevHwDates=Object.keys(s.homework||{}).filter(d=>d<vd&&(s.homework||{})[d]).sort();
-        if(_prevHwDates.length){
-          const _pd=_prevHwDates[_prevHwDates.length-1];
-          const _pdt=ld(_pd);
-          const _plbl=(_pdt.getMonth()+1)+'/'+_pdt.getDate()+'('+['일','월','화','수','목','금','토'][_pdt.getDay()]+')';
-          html+='<div style="background:#F1F5F9;border:1px solid #CBD5E1;border-radius:var(--rs);padding:4px 7px;font-size:10px;color:#475569;margin-top:3px"><span style="font-weight:600;color:#64748B">📌 지난과제 '+_plbl+'</span> '+escHtml(s.homework[_pd])+'</div>';
-        }
         html+='</div>';
       });
       html+='</div>';
@@ -1305,8 +1313,7 @@ function rFB(){
     }
     html+='</div>';
     html+='</div>'; // end TEST row
-    // 과제
-    html+='<div class="fl"><label style="font-size:10px">과제</label><input id="fb-hw-'+sid+'" placeholder="p.45~50 풀기" value="'+_savedHW+'" style="padding:5px 7px;font-size:12px;border:1px solid #FAD76A;border-radius:var(--rs);background:#FEF9E7;color:#1A3028;width:100%" onchange="updFBCard('+sid+')"></div>';
+
     // 특이사항 (rows 4로 크게)
     html+='<div class="fl"><label style="font-size:10px">특이사항</label><textarea id="fb-n-'+sid+'" rows="4" placeholder="특이사항..." style="width:100%;padding:6px 8px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028;font-family:var(--font);resize:vertical;line-height:1.5" onchange="updFBCard('+sid+')">'+escHtml(_savedNote)+'</textarea></div>';
     // 미리보기
@@ -1376,7 +1383,7 @@ function rStu(){
   const s=gs(selStu);if(!s)return;
   document.getElementById('tp-t').textContent=s.name;
   document.getElementById('tp-a').innerHTML='<button class="btn d" onclick="retireStu('+s.id+')">'+(s.active===false?'재원 복귀':'퇴원 처리')+'</button><button class="btn d" onclick="delStu('+s.id+')" style="margin-left:4px;opacity:.7">삭제</button>';
-  document.getElementById('mc').innerHTML='<div class="tr2"><button class="tb2'+(curTab==='info'?' on':'')+'" onclick="swT(\'info\')">기본정보</button><button class="tb2'+(curTab==='stuatt'?' on':'')+'" onclick="swT(\'stuatt\')">출결</button><button class="tb2'+(curTab==='tb'?' on':'')+'" onclick="swT(\'tb\')">교재</button><button class="tb2'+(curTab==='test'?' on':'')+'" onclick="swT(\'test\')">테스트</button><button class="tb2'+(curTab==='hw'?' on':'')+'" onclick="swT(\'hw\')">과제</button><button class="tb2'+(curTab==='fbhist'?' on':'')+'" onclick="swT(\'fbhist\')">피드백문자</button><button class="tb2'+(curTab==='graph'?' on':'')+'" onclick="swT(\'graph\')">📈 성장그래프</button><button class="tb2'+(curTab==='wc'?' on':'')+'" onclick="swT(\'wc\')">주말클리닉</button></div><div id="tc"></div>';
+  document.getElementById('mc').innerHTML='<div class="tr2"><button class="tb2'+(curTab==='info'?' on':'')+'" onclick="swT(\'info\')">기본정보</button><button class="tb2'+(curTab==='stuatt'?' on':'')+'" onclick="swT(\'stuatt\')">출결</button><button class="tb2'+(curTab==='tb'?' on':'')+'" onclick="swT(\'tb\')">교재</button><button class="tb2'+(curTab==='test'?' on':'')+'" onclick="swT(\'test\')">테스트</button><button class="tb2'+(curTab==='fbhist'?' on':'')+'" onclick="swT(\'fbhist\')">피드백문자</button><button class="tb2'+(curTab==='graph'?' on':'')+'" onclick="swT(\'graph\')">📈 성장그래프</button><button class="tb2'+(curTab==='wc'?' on':'')+'" onclick="swT(\'wc\')">주말클리닉</button></div><div id="tc"></div>';
   rTab();
 }
 function swT(t){
