@@ -1197,11 +1197,26 @@ function editConsultPage(sid,i){
 }
 
 /* 피드백 */
-function buildFB(name,dateStr,book,hw,note,dScore,wScore){
+function buildFB(s,dateStr,book,hw,note,dScore,wScore){
   const lines=[];
+  const name=s.name;
   lines.push(name+' 학생 피드백 문자 드립니다.');
   lines.push('');
-  lines.push('수업일 | '+dateStr);
+  // 이번주 수업 날짜 계산
+  const _vd=dateStr.match(/\d{1,2}\/\d{1,2}/)?dateStr.split('(')[0].trim():'';
+  const _dow=ld(vDate||today()).getDay();
+  const _weekStart=new Date(ld(vDate||today()));_weekStart.setDate(_weekStart.getDate()-(_dow||7)+1);
+  const _stuDays=getStuDays(s);
+  const _thisWeekClasses=[];
+  for(let i=0;i<7;i++){
+    const _d=new Date(_weekStart);_d.setDate(_d.getDate()+i);
+    const _dayOfWeek=_d.getDay();
+    if(_stuDays.includes(_dayOfWeek)){
+      const _mm=_d.getMonth()+1, _dd=_d.getDate();
+      _thisWeekClasses.push(_mm+'월 '+_dd+'일('+['일','월','화','수','목','금','토'][_dayOfWeek]+')');
+    }
+  }
+  lines.push('수업일 | '+(_thisWeekClasses.length?_thisWeekClasses.join(', '):'정보없음'));
   lines.push('');
   lines.push('교재 | '+(book||''));
   lines.push('');
@@ -1284,11 +1299,25 @@ function rFB(){
     const dtVal=todayD&&todayD.total!=null?todayD.total:'';
     const wVal=todayW&&todayW.correct!=null?todayW.correct:'';
     const wtVal=todayW&&todayW.total!=null?todayW.total:'';
-    const prevText=_savedFB&&_savedFB.text?_savedFB.text:buildFB(s.name,dateStr,_savedBook,_savedHW,_savedNote,noD?'없음':todayD,noW?'없음':todayW);
+    const prevText=_savedFB&&_savedFB.text?_savedFB.text:buildFB(s,dateStr,_savedBook,_savedHW,_savedNote,noD?'없음':todayD,noW?'없음':todayW);
 
     html+='<div class="card" style="padding:13px;display:flex;flex-direction:column;gap:8px">';
-    // 학생명 헤더
-    html+='<div style="display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid #EAF5EE"><div style="width:30px;height:30px;border-radius:50%;background:#C8EDD8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1B5E3B;flex-shrink:0">'+s.name[0]+'</div><div><div style="font-size:13px;font-weight:600;color:#1A3028">'+s.name+'</div><div style="font-size:10px;color:#7A9E8E">'+getStuLabel(s)+'</div></div></div>';
+    // 학생명 헤더 + 이번주 수업 날짜
+    const _dow=ld(vd).getDay();
+    const _weekStart=new Date(ld(vd));_weekStart.setDate(_weekStart.getDate()-(_dow||7)+1);
+    const _stuDays=getStuDays(s);
+    const _thisWeekClasses=[];
+    for(let i=0;i<7;i++){
+      const _d=new Date(_weekStart);_d.setDate(_d.getDate()+i);
+      const _dayOfWeek=_d.getDay();
+      if(_stuDays.includes(_dayOfWeek)){
+        const _dd=function(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}(_d);
+        _thisWeekClasses.push({date:_dd,day:['일','월','화','수','목','금','토'][_dayOfWeek],iToday:_dd===vd});
+      }
+    }
+    html+='<div style="display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid #EAF5EE"><div style="width:30px;height:30px;border-radius:50%;background:#C8EDD8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1B5E3B;flex-shrink:0">'+s.name[0]+'</div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1A3028">'+s.name+'</div><div style="font-size:10px;color:#7A9E8E">'+getStuLabel(s)+'</div>'
+      +(_thisWeekClasses.length?'<div style="font-size:10px;color:#2D9B6A;font-weight:600;margin-top:3px">이번주 수업: '+_thisWeekClasses.map(c=>c.day+(c.iToday?' 🔴':'')).join(', ')+'</div>':'')
+      +'</div></div>';
     // 날짜
     html+='<div class="fl"><label style="font-size:10px">날짜</label><input type="date" id="fb-d-'+sid+'" value="'+td+'" style="padding:5px 7px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028;width:100%" onchange="updFBCard('+sid+')"></div>';
     // 교재
@@ -1349,7 +1378,7 @@ function updFBCard(sid){
   const dScore=noD?'없음':(dc||dt)?{correct:dc,total:dt}:null;
   const wScore=noW?'없음':(wc||wt)?{correct:wc,total:wt}:null;
   const prev=document.getElementById('fb-prev-'+sid);
-  if(prev)prev.textContent=buildFB(s.name,dateStr,book,hw,note,dScore,wScore);
+  if(prev)prev.textContent=buildFB(gs(sid),dateStr,book,hw,note,dScore,wScore);
 }
 function copyFBCard(sid){
   const prev=document.getElementById('fb-prev-'+sid);if(!prev)return;
