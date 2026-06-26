@@ -782,6 +782,50 @@ function rHome(){
     html+='</div></div>';
   }
 
+    // ── 이번주 마지막 등원일 (피드백 문자 대상) ──
+  const _allDates=[];
+  students.filter(s=>s.active!==false).forEach(s=>{
+    const stuDays=getStuDays(s);
+    for(let d=1;d<=7;d++){
+      if(stuDays.includes(d%7)){
+        const _wd=new Date(_weekStart);_wd.setDate(_wd.getDate()+d-1);
+        _allDates.push({date:_wd,dow:d%7});
+      }
+    }
+  });
+  const _lastDay=Math.max(...new Set(_allDates.map(d=>d.date.getTime())));
+  const _lastDayDate=new Date(_lastDay);
+  const _lastDayStr=(_lastDayDate.getMonth()+1)+'/'+ _lastDayDate.getDate()+' ('+['일','월','화','수','목','금','토'][_lastDayDate.getDay()]+')';
+  const _lastDayStudents=students.filter(s=>{
+    if(s.active===false)return false;
+    const stuDays=getStuDays(s);
+    const _dd=function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}(_lastDayDate);
+    // 해당 요일 수업 O 또는 보강 예정
+    const isRegular=stuDays.includes(_lastDayDate.getDay());
+    const isMakeup=Object.entries(s.makeups||{}).some(([d,v])=>{
+      if(!v)return false;
+      const mk=v;
+      const _m=_lastDayDate.getMonth()+1, _d=_lastDayDate.getDate();
+      return mk.includes(_m+'/'+ _d)||mk.includes(String(_m).padStart(2,'0')+'/'+ String(_d).padStart(2,'0'));
+    });
+    return isRegular||isMakeup;
+  }).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+
+  if(_lastDayStudents.length){
+    html+='<div class="card" style="background:linear-gradient(135deg,#E0F5EB 0%,#D5F5E3 100%);border:1px solid #86D4A8;margin-bottom:12px">';
+    html+='<div style="font-size:12px;font-weight:600;color:#0D6B3A;margin-bottom:10px">📬 피드백 문자 (이번주 마지막 등원일)</div>';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #A7E0C2">';
+    html+='<span style="font-size:13px;font-weight:700;color:#0D6B3A">'+_lastDayStr+'</span>';
+    html+='<span style="font-size:12px;color:#2D9B6A">'+_lastDayStudents.length+'명</span>';
+    html+='</div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    _lastDayStudents.forEach(s=>{
+      html+='<button onclick="selStu2('+s.id+')" style="padding:5px 12px;border-radius:20px;border:1px solid #2D9B6A;background:#fff;color:#0D6B3A;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font)">'+s.name+'</button>';
+    });
+    html+='</div>';
+    html+='</div>';
+  }
+
     // ── 결석 현황 ──
   if(weekAbsent.length){
     html+='<div class="card" style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:#1A3028;margin-bottom:9px">'+(isThisMonth?'📋 이번주 결석':'📋 '+(vM+1)+'월 결석')+'</div>';
