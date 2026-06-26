@@ -783,12 +783,15 @@ function rHome(){
   }
 
     // ── 이번주 마지막 등원일 (피드백 문자 대상) ──
+  const _td=ld(today());
+  const _dow=_td.getDay();
+  const _weekStart2=new Date(_td);_weekStart2.setDate(_td.getDate()-(_dow||7)+1);
   const _allDates=[];
   students.filter(s=>s.active!==false).forEach(s=>{
     const stuDays=getStuDays(s);
     for(let d=1;d<=7;d++){
       if(stuDays.includes(d%7)){
-        const _wd=new Date(_weekStart);_wd.setDate(_wd.getDate()+d-1);
+        const _wd=new Date(_weekStart2);_wd.setDate(_wd.getDate()+d-1);
         _allDates.push({date:_wd,dow:d%7});
       }
     }
