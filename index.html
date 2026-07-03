@@ -1303,8 +1303,8 @@ function rFB(){
     document.getElementById('mc').innerHTML=html;return;
   }
 
-  // 한 화면에 모두 표시 (2열 그리드)
-  html+='<div class="fb-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-items:start">';
+  // 한 화면에 모두 표시 (4열 그리드)
+  html+='<div class="fb-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:start">';
 
   allActive.forEach(s=>{
     const vd=td; // 오늘 날짜 기준
@@ -1331,7 +1331,7 @@ function rFB(){
     const dateStr=_fbDateStr; // dateStr 정의
     const prevText=_savedFB&&_savedFB.text?_savedFB.text:buildFB(s,dateStr,_savedBook,_savedHW,_savedNote,noD?'없음':todayD,noW?'없음':todayW);
 
-    html+='<div class="card" style="padding:13px;display:flex;flex-direction:column;gap:8px">';
+    html+='<div class="card" style="padding:8px;display:flex;flex-direction:column;gap:5px;font-size:12px">';
     // 학생명 헤더 + 이번주 수업 날짜
     const _dow=ld(vd).getDay();
     const _weekStart=new Date(ld(vd));_weekStart.setDate(_weekStart.getDate()-(_dow||7)+1);
@@ -1345,7 +1345,7 @@ function rFB(){
         _thisWeekClasses.push({date:_dd,day:['일','월','화','수','목','금','토'][_dayOfWeek],iToday:_dd===vd});
       }
     }
-    html+='<div style="display:flex;align-items:center;gap:7px;padding-bottom:8px;border-bottom:1px solid #EAF5EE"><div style="width:30px;height:30px;border-radius:50%;background:#C8EDD8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1B5E3B;flex-shrink:0">'+s.name[0]+'</div><div style="flex:1"><div style="font-size:13px;font-weight:600;color:#1A3028">'+s.name+'</div><div style="font-size:10px;color:#7A9E8E">'+getStuLabel(s)+'</div>'
+    html+='<div style="display:flex;align-items:center;gap:5px;padding-bottom:6px;border-bottom:1px solid #EAF5EE"><div style="width:24px;height:24px;border-radius:50%;background:#C8EDD8;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#1B5E3B;flex-shrink:0">'+s.name[0]+'</div><div style="flex:1"><div style="font-size:12px;font-weight:600;color:#1A3028">'+s.name+'</div><div style="font-size:9px;color:#7A9E8E">'+getStuLabel(s)+'</div>'
       +(_thisWeekClasses.length?'<div style="font-size:10px;color:#2D9B6A;font-weight:600;margin-top:3px">이번주 수업: '+_thisWeekClasses.map(c=>c.day+(c.iToday?' 🔴':'')).join(', ')+'</div>':'')
       +'</div></div>';
     // 날짜
@@ -1372,12 +1372,12 @@ function rFB(){
     html+='</div>';
     html+='</div>'; // end TEST row
 
-    // 특이사항 (rows 4로 크게)
-    html+='<div class="fl"><label style="font-size:10px">특이사항</label><textarea id="fb-n-'+sid+'" rows="4" placeholder="특이사항..." style="width:100%;padding:6px 8px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028;font-family:var(--font);resize:vertical;line-height:1.5" onchange="updFBCard('+sid+')">'+escHtml(_savedNote)+'</textarea></div>';
+    // 특이사항 (rows 2로 축소)
+    html+='<div class="fl"><label style="font-size:9px">특이사항</label><textarea id="fb-n-'+sid+'" rows="2" placeholder="특이사항..." style="width:100%;padding:4px 6px;font-size:11px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028;font-family:var(--font);resize:vertical;line-height:1.3" onchange="updFBCard('+sid+')">'+escHtml(_savedNote)+'</textarea></div>';
     // 미리보기
-    html+='<div id="fb-prev-'+sid+'" style="background:#F5FCF7;border:1px solid #D4EDE0;border-radius:var(--rs);padding:9px 10px;font-size:11px;line-height:1.8;color:#2D5044;white-space:pre-wrap;min-height:80px">'+prevText+'</div>';
+    html+='<div id="fb-prev-'+sid+'" style="background:#F5FCF7;border:1px solid #D4EDE0;border-radius:var(--rs);padding:6px 8px;font-size:10px;line-height:1.4;color:#2D5044;white-space:pre-wrap;min-height:60px;max-height:100px;overflow-y:auto">'+prevText+'</div>';
     // 복사/저장 버튼
-    html+='<div style="display:flex;gap:5px"><button class="btn p" style="flex:1;font-size:11px;padding:5px 0" onclick="copyFBCard('+sid+')">복사</button><button class="btn" style="flex:1;font-size:11px;padding:5px 0" onclick="saveFBCard('+sid+')">저장</button></div>';
+    html+='<div style="display:flex;gap:4px"><button class="btn p" style="flex:1;font-size:10px;padding:3px 0" onclick="copyFBCard('+sid+')">복사</button><button class="btn" style="flex:1;font-size:10px;padding:3px 0" onclick="saveFBCard('+sid+')">저장</button></div>';
     html+='</div>'; // end card
   });
 
