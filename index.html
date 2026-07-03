@@ -1322,6 +1322,14 @@ function buildFB(s,dateStr,book,hw,note,dScore,wScore){
 }
 function rFB(){
   document.getElementById('tp-t').textContent='피드백 문자';document.getElementById('tp-a').innerHTML='';
+  // 월요일이면 특이사항 초기화
+  const _today=ld(today());
+  if(_today.getDay()===1){ // 1 = 월요일
+    students.forEach(s=>{
+      s.fbNotes={};
+    });
+    saveData();
+  }
   const td=today();
   // 전체 재원생 (출석 여부 상관없이)
   const allActive=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
