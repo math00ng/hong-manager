@@ -1307,22 +1307,23 @@ function rFB(){
   html+='<div class="fb-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-items:start">';
 
   allActive.forEach(s=>{
+    const vd=td; // 오늘 날짜 기준
     const activeTB=(s.textbooks||[]).filter(tb=>!tb.done),tbName=activeTB.length?activeTB[activeTB.length-1].name:'';
     const todayHW=(s.homework||{})[vd]||'';
     const noD=(s.noDaily||{})[vd],noW=(s.noWeekly||{})[vd];
     const todayD=s.dailyTests.find(t=>t.date===vd)||null;
     const todayW=s.weeklyTests.find(t=>t.date===vd)||null;
-    // 저장된 피드백 불러오기 (해당 날짜)
-    const _savedFB=(s.feedbackHistory||[]).find(f=>f.date===vd);
-    const _savedNote=(s.fbNotes||{})[vd]||'';
+    // 가장 최근 피드백 찾기
+    const _lastFB=(s.feedbackHistory||[]).slice().sort((a,b)=>b.date>a.date?1:-1)[0];
+    const _fbDate=_lastFB?.date||vd;
+    const _fbDo=ld(_fbDate);
+    const _fbDateStr=(_fbDo.getMonth()+1)+'월 '+_fbDo.getDate()+'일 ('+['일','월','화','수','목','금','토'][_fbDo.getDay()]+')';
+    // 저장된 피드백 불러오기 (가장 최근 날짜 기준)
+    const _savedFB=(s.feedbackHistory||[]).find(f=>f.date===_fbDate);
+    const _savedNote=(s.fbNotes||{})[_fbDate]||'';
     const _savedBook=_savedFB&&_savedFB.book!=null?_savedFB.book:tbName;
     const _savedHW=_savedFB&&_savedFB.hw!=null?_savedFB.hw:todayHW;
     const sid=s.id;
-    // 가장 최근 피드백 찾기
-    const _lastFB=(s.feedbackHistory||[]).slice().sort((a,b)=>b.date>a.date?1:-1)[0];
-    const _fbDate=_lastFB?.date||td;
-    const _fbDo=ld(_fbDate);
-    const _fbDateStr=(_fbDo.getMonth()+1)+'월 '+_fbDo.getDate()+'일 ('+['일','월','화','수','목','금','토'][_fbDo.getDay()]+')'
     const dVal=todayD&&todayD.correct!=null?todayD.correct:'';
     const dtVal=todayD&&todayD.total!=null?todayD.total:'';
     const wVal=todayW&&todayW.correct!=null?todayW.correct:'';
