@@ -422,7 +422,8 @@ function loadData(){
       s.schedules=(days.length||time)?[{days,time}]:[];
     }
   });
-}
+
+  checkAndResetFeedback();}
 
 function T(m){const t=document.getElementById('tst');t.textContent=m;t.style.opacity=1;setTimeout(()=>t.style.opacity=0,2200);}
 function gs(id){return students.find(s=>s.id===id);}
@@ -472,6 +473,24 @@ function selStu2(id){
 
 
 /* 홈 대시보드 */
+// ── 매주 월요일 피드백 초기화 ──
+function checkAndResetFeedback(){
+  const _lastResetKey='_fb_reset_week';
+  const _today=today();
+  const _todayObj=ld(_today);
+  const _weekNum=Math.floor((_todayObj.getTime()-new Date(_todayObj.getFullYear(),0,1).getTime())/(7*24*60*60*1000));
+  const _lastReset=localStorage.getItem(_lastResetKey);
+  
+  // 이번 주가 리셋되지 않았으면 리셋
+  if(_lastReset!==String(_weekNum)){
+    students.forEach(s=>{
+      s.feedbackHistory=(s.feedbackHistory||[]).filter(f=>f.date<_today);
+      s.fbNotes={};
+    });
+    localStorage.setItem(_lastResetKey,String(_weekNum));
+    saveData();
+  }
+}
 function rHome(){
   if(window._homeY===undefined){window._homeY=new Date().getFullYear();window._homeM=new Date().getMonth();}
   const vY=window._homeY,vM=window._homeM;
@@ -813,7 +832,20 @@ function rHome(){
       return mk.includes(_m+'/'+ _d)||mk.includes(String(_m).padStart(2,'0')+'/'+ String(_d).padStart(2,'0'));
     });
     return isRegular||isMakeup;
-  }).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  }).sort((a,b)=>{
+    // 각 학생의 마지막 등원 요일 찾기
+    const stuDays_a=getStuDays(a);
+    const stuDays_b=getStuDays(b);
+    let lastDay_a=-1, lastDay_b=-1;
+    for(let d=6;d>=0;d--){
+      if(lastDay_a===-1&&stuDays_a.includes(d))lastDay_a=d;
+      if(lastDay_b===-1&&stuDays_b.includes(d))lastDay_b=d;
+    }
+    // 요일 빠른 순서대로 (월=1 먼저, 일=0 나중)
+    if(lastDay_a!==lastDay_b)return lastDay_a-lastDay_b;
+    // 같은 요일이면 이름순
+    return a.name.localeCompare(b.name,'ko');
+  });
 
   if(_lastDayStudents.length){
     html+='<div class="card" style="background:linear-gradient(135deg,#E0F5EB 0%,#D5F5E3 100%);border:1px solid #86D4A8;margin-bottom:12px">';
