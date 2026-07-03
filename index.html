@@ -907,11 +907,11 @@ function rToday(){
         }
         html+='<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:#5A8070;width:42px;flex-shrink:0">일일TEST</span>';
         if(noD){html+='<span style="font-size:10px;color:#7A9E8E">없음</span>';}
-        else{html+='<input type="number" min="0" max="100" placeholder="맞" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(dScore&&dScore.correct!=null?dScore.correct:'')+'" onchange="setTest('+s.id+',\'daily\',\''+vd+'\',\'correct\',this.value)"><span style="font-size:10px;color:#7A9E8E">/</span><input type="number" min="0" max="100" placeholder="전" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(dScore&&dScore.total!=null?dScore.total:'')+'" onchange="setTest('+s.id+',\'daily\',\''+vd+'\',\'total\',this.value)">';}
+        else{html+='<input type="number" min="0" max="100" placeholder="점수" style="width:50px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(dScore&&dScore.correct!=null?dScore.correct:'')+'" onchange="setTest('+s.id+',\'daily\',\''+vd+'\',\'correct\',this.value)">';}
         html+='<button class="at'+(noD?' 없음':'')+'" style="font-size:9px;padding:2px 5px;margin-left:auto" onclick="toggleNo('+s.id+',\'daily\',\''+vd+'\')">없음</button></div>';
         html+='<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:#5A8070;width:42px;flex-shrink:0">주간TEST</span>';
         if(noW){html+='<span style="font-size:10px;color:#7A9E8E">없음</span>';}
-        else{html+='<input type="number" min="0" max="100" placeholder="맞" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.correct!=null?wScore.correct:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'correct\',this.value)"><span style="font-size:10px;color:#7A9E8E">/</span><input type="number" min="0" max="100" placeholder="전" style="width:40px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.total!=null?wScore.total:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'total\',this.value)">';}
+        else{html+='<input type="number" min="0" max="100" placeholder="점수" style="width:50px;padding:3px 5px;font-size:11px;border:1px solid #D4EDE0;border-radius:4px;background:#fff;color:#1A3028" value="'+(wScore&&wScore.correct!=null?wScore.correct:'')+'" onchange="setTest('+s.id+',\'weekly\',\''+vd+'\',\'correct\',this.value)">';}
         html+='<button class="at'+(noW?' 없음':'')+'" style="font-size:9px;padding:2px 5px;margin-left:auto" onclick="toggleNo('+s.id+',\'weekly\',\''+vd+'\')">없음</button></div>';
         const _todayNote=(s.fbNotes||{})[vd]||'';
         html+='<input placeholder="특이사항..." value="'+escHtml(_todayNote)+'" style="width:100%;padding:4px 7px;font-size:11px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#F5FCF7;color:#1A3028" onchange="setTodayNote('+s.id+',\''+vd+'\',this.value)">';
@@ -945,7 +945,17 @@ function changeStuTime(sid,date){
 }
 
 function setHW(sid,d,v){const s=gs(sid);if(!s.homework)s.homework={};s.homework[d]=v;saveData();}
-function setTodayNote(sid,d,v){const s=gs(sid);if(!s.fbNotes)s.fbNotes={};if(v)s.fbNotes[d]=v;else delete s.fbNotes[d];saveData();}
+function setTodayNote(sid,d,v){
+  const s=gs(sid);
+  if(!s.fbNotes)s.fbNotes={};
+  if(v)s.fbNotes[d]=v;else delete s.fbNotes[d];
+  saveData();
+  // 피드백 문자도 즉시 업데이트
+  const fbPrev=document.getElementById('fb-prev-'+sid);
+  if(fbPrev){
+    updFBCard(sid);
+  }
+}
 
 function changeStuTimeHome(sid,date){
   const s=gs(sid);if(!s)return;
@@ -1327,9 +1337,15 @@ function rFB(){
   if(_today.getDay()===1){ // 1 = 월요일
     students.forEach(s=>{
       s.fbNotes={};
+      s.feedbackHistory=[];
     });
     saveData();
   }
+  // 지금 당장 특이사항 비우기
+  students.forEach(s=>{
+    s.fbNotes={};
+  });
+  saveData();
   const td=today();
   // 전체 재원생 (출석 여부 상관없이)
   const allActive=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
@@ -1450,6 +1466,15 @@ function updFBCard(sid){
   const wScore=noW?'없음':(wc||wt)?{correct:wc,total:wt}:null;
   const prev=document.getElementById('fb-prev-'+sid);
   if(prev)prev.textContent=buildFB(gs(sid),dateStr,book,hw,note,dScore,wScore);
+  
+  // 입력할 때마다 자동 저장
+  if(!s.fbNotes)s.fbNotes={};
+  if(note)s.fbNotes[dateVal]=note;else delete s.fbNotes[dateVal];
+  if(!s.feedbackHistory)s.feedbackHistory=[];
+  const entry={date:dateVal,text:prev?.textContent||'',hw:hw,book:book,note:note};
+  const ei=s.feedbackHistory.findIndex(f=>f.date===dateVal);
+  if(ei!==-1)s.feedbackHistory[ei]=entry;else s.feedbackHistory.unshift(entry);
+  saveData();
 }
 function copyFBCard(sid){
   const prev=document.getElementById('fb-prev-'+sid);if(!prev)return;
