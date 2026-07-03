@@ -1289,48 +1289,24 @@ function buildFB(s,dateStr,book,hw,note,dScore,wScore){
 }
 function rFB(){
   document.getElementById('tp-t').textContent='피드백 문자';document.getElementById('tp-a').innerHTML='';
-  if(window._fbDay===undefined)window._fbDay=-1;
-  const selDay=window._fbDay;
-  // 해당 날짜 출석 누른 학생만
-  const filtered=students.filter(s=>{
-    if(s.active===false)return false;
-    const att=(s.attendance||{})[vDate||today()];
-    if(att!=='O')return false;
-    if(selDay===-1)return true;
-    return stuHasDay(s,selDay);
-  });
-  const td=today(),vd=vDate||td;
-  const tdo=ld(vd);
-  const DAYS=['일','월','화','수','목','금','토'];
-  const dateStr=(tdo.getMonth()+1)+'월 '+tdo.getDate()+'일 ('+DAYS[tdo.getDay()]+')';
+  const td=today();
+  // 전체 재원생 (출석 여부 상관없이)
+  const allActive=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  
+  let html='<div style="margin-bottom:12px;padding:12px;background:#E0F5EB;border:1px solid #A7E0C2;border-radius:var(--r);text-align:center">'
+    +'<div style="font-size:13px;font-weight:600;color:#0D6B3A">🗓️ 주간 피드백 문자 작성</div>'
+    +'<div style="font-size:11px;color:#2D9B6A;margin-top:3px">재원생 '+allActive.length+'명 | 한 화면에 쫙 표시</div>'
+    +'</div>';
 
-  // 날짜 네비
-  let html='<div class="dn" style="margin-bottom:10px">'+'<button onclick="vDate=addD(vDate,-1);rFB()">◀ 전날</button>'+'<span class="dl">'+fmtD(vd)+'</span>'+'<button onclick="vDate=addD(vDate,1);rFB()">다음날 ▶</button>'+(vd!==td?'<button class="pill" onclick="vDate=today();rFB()">오늘로</button>':'')+'</div>';
-
-  // 요일 필터 바
-  html+='<div style="display:flex;gap:6px;margin-bottom:13px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:#5A8070;font-weight:500">요일 필터</span>';
-  [{v:-1,l:'전체'},{v:1,l:'월'},{v:2,l:'화'},{v:3,l:'수'},{v:4,l:'목'},{v:5,l:'금'}].forEach(({v,l})=>{html+='<button onclick="window._fbDay='+v+';rFB()" style="padding:5px 14px;border-radius:20px;border:1px solid '+(selDay===v?'#2563EB':'#CBD5E1')+';background:'+(selDay===v?'#2563EB':'#fff')+';color:'+(selDay===v?'#fff':'#334155')+';font-size:13px;cursor:pointer;font-weight:'+(selDay===v?'600':'400')+'">'+l+'</button>';});
-  html+='<span style="font-size:12px;color:#94A3B8">'+filtered.length+'명</span></div>';
-
-  if(!filtered.length){
-    // 출석 'O' 누른 학생이 없는 경우 - 안내 메시지
-    const todayAllStus=students.filter(s=>{
-      if(s.active===false)return false;
-      if(selDay===-1)return true;
-      return stuHasDay(s,selDay);
-    });
-    if(todayAllStus.length){
-      html+='<div class="card" style="color:#5A8070;text-align:center;padding:28px"><div style="font-size:32px;margin-bottom:10px">📭</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">출석한 학생이 없어요</div><div style="font-size:12px;line-height:1.6">'+fmtD(vd)+'에 출석(✓) 처리된 학생이 없습니다.<br>일일업무 탭에서 출석을 먼저 입력해주세요.</div><button class="btn p" style="margin-top:14px" onclick="sv(\'today\')">📋 일일업무로 가기</button></div>';
-    } else {
-      html+='<div class="card" style="color:#7A9E8E;text-align:center;padding:28px">해당 요일 학생이 없습니다</div>';
-    }
+  if(!allActive.length){
+    html+='<div class="card" style="color:#7A9E8E;text-align:center;padding:28px">재원생이 없습니다</div>';
     document.getElementById('mc').innerHTML=html;return;
   }
 
-  // 4열 카드 그리드
-  html+='<div class="fb-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:start">';
+  // 한 화면에 모두 표시 (2열 그리드)
+  html+='<div class="fb-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-items:start">';
 
-  filtered.forEach(s=>{
+  allActive.forEach(s=>{
     const activeTB=(s.textbooks||[]).filter(tb=>!tb.done),tbName=activeTB.length?activeTB[activeTB.length-1].name:'';
     const todayHW=(s.homework||{})[vd]||'';
     const noD=(s.noDaily||{})[vd],noW=(s.noWeekly||{})[vd];
@@ -1342,6 +1318,11 @@ function rFB(){
     const _savedBook=_savedFB&&_savedFB.book!=null?_savedFB.book:tbName;
     const _savedHW=_savedFB&&_savedFB.hw!=null?_savedFB.hw:todayHW;
     const sid=s.id;
+    // 가장 최근 피드백 찾기
+    const _lastFB=(s.feedbackHistory||[]).slice().sort((a,b)=>b.date>a.date?1:-1)[0];
+    const _fbDate=_lastFB?.date||td;
+    const _fbDo=ld(_fbDate);
+    const _fbDateStr=(_fbDo.getMonth()+1)+'월 '+_fbDo.getDate()+'일 ('+['일','월','화','수','목','금','토'][_fbDo.getDay()]+')'
     const dVal=todayD&&todayD.correct!=null?todayD.correct:'';
     const dtVal=todayD&&todayD.total!=null?todayD.total:'';
     const wVal=todayW&&todayW.correct!=null?todayW.correct:'';
