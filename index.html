@@ -1328,6 +1328,7 @@ function rFB(){
     const dtVal=todayD&&todayD.total!=null?todayD.total:'';
     const wVal=todayW&&todayW.correct!=null?todayW.correct:'';
     const wtVal=todayW&&todayW.total!=null?todayW.total:'';
+    const dateStr=_fbDateStr; // dateStr 정의
     const prevText=_savedFB&&_savedFB.text?_savedFB.text:buildFB(s,dateStr,_savedBook,_savedHW,_savedNote,noD?'없음':todayD,noW?'없음':todayW);
 
     html+='<div class="card" style="padding:13px;display:flex;flex-direction:column;gap:8px">';
