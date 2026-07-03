@@ -170,7 +170,7 @@ tr:hover td{background:#F5FCF7}
   .g3{grid-template-columns:1fr 1fr}
   .today-2col{grid-template-columns:1fr!important}
   .today-stu-grid{grid-template-columns:repeat(2,1fr)!important}
-  .fb-grid{grid-template-columns:repeat(2,1fr)!important}
+  .fb-grid{grid-template-columns:repeat(4,1fr)!important}
   /* 모바일 터치 개선 */
   .btn{padding:8px 14px;font-size:13px}
   .btn.s{padding:5px 11px;font-size:12px}
@@ -186,7 +186,8 @@ tr:hover td{background:#F5FCF7}
 }
 @media(max-width:500px){
   .today-stu-grid{grid-template-columns:1fr!important}
-  .fb-grid{grid-template-columns:1fr!important}
+  @media(max-width:900px){.fb-grid{grid-template-columns:repeat(2,1fr)!important}}
+  @media(max-width:600px){.fb-grid{grid-template-columns:1fr!important}}
   .g3{grid-template-columns:1fr}
 }
 </style>
