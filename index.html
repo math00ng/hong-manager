@@ -502,7 +502,17 @@ function rHome(){
   const now=new Date();
 
   // 오늘 등원 학생
-  const todayStu=students.filter(s=>s.active!==false&&stuHasDay(s,dow));
+  const todayStu=students.filter(s=>{
+    if(s.active===false)return false;
+    if(!stuHasDay(s,dow))return false;
+    // enrollDate 체크: 등원일이 오늘 이전이어야만 표시
+    if(s.enrollDate){
+      const ed=new Date(s.enrollDate);
+      const td_obj=new Date();
+      if(ed>td_obj)return false; // 아직 등원일이 안 됐으면 표시 안 함
+    }
+    return true;
+  });
   const att=todayStu.map(s=>(s.attendance||{})[td]||null);
   const present=att.filter(v=>v==='O').length;
   const absent=att.filter(v=>v==='X').length;
@@ -800,6 +810,25 @@ function rHome(){
       html+='</div></div>';
     });
     html+='</div></div>';
+  }
+
+    // ── 첫 등원일 (방금 들어온 학생) ──
+  const _firstEnrolled=students.filter(s=>s.active!==false&&s.enrollDate).sort((a,b)=>{
+    const da=new Date(a.enrollDate),db=new Date(b.enrollDate);
+    return db-da; // 최근 순
+  }).slice(0,5); // 최근 5명만
+  
+  if(_firstEnrolled.length){
+    html+='<div class="card" style="background:linear-gradient(135deg,#FEF9E7 0%,#FFF9DC 100%);border:1px solid #FAD76A;margin-bottom:12px">';
+    html+='<div style="font-size:12px;font-weight:600;color:#7A4E0A;margin-bottom:10px">🆕 신규 입원</div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    _firstEnrolled.forEach(s=>{
+      const ed=ld(s.enrollDate);
+      const edStr=(ed.getMonth()+1)+'월 '+ed.getDate()+'일';
+      html+='<button onclick="selStu2('+s.id+')" style="padding:6px 12px;border-radius:20px;border:1px solid #D4A800;background:#fff;color:#7A4E0A;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)">'+s.name+' <span style="font-size:10px;color:#9B6B0A;margin-left:4px">('+edStr+')</span></button>';
+    });
+    html+='</div>';
+    html+='</div>';
   }
 
     // ── 이번주 마지막 등원일 (피드백 문자 대상) ──
@@ -1416,7 +1445,7 @@ function rFB(){
     if(noD){
       html+='<div style="display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:#7A9E8E;flex:1">없음</span><button class="at 없음" style="font-size:9px;padding:2px 6px" onclick="toggleFBNo('+sid+',\'daily\')">해제</button></div>';
     } else {
-      html+='<div style="display:flex;gap:3px;align-items:center"><input id="fb-dc-'+sid+'" type="number" min="0" max="100" placeholder="맞" style="width:38px;padding:4px 5px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028" value="'+dVal+'" onchange="updFBCard('+sid+')"><span style="color:#7A9E8E;font-size:11px">/</span><input id="fb-dt-'+sid+'" type="number" min="0" max="100" placeholder="전" style="width:38px;padding:4px 5px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028" value="'+dtVal+'" onchange="updFBCard('+sid+')"><button class="at" style="font-size:9px;padding:2px 5px;margin-left:1px" onclick="toggleFBNo('+sid+',\'daily\')">없음</button></div>';
+      html+='<div style="display:flex;gap:3px;align-items:center"><input id="fb-dc-'+sid+'" type="number" min="0" max="100" placeholder="점수" style="width:50px;padding:4px 5px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028" value="'+dVal+'" onchange="updFBCard('+sid+')"><button class="at" style="font-size:9px;padding:2px 5px;margin-left:1px" onclick="toggleFBNo('+sid+',\'daily\')">없음</button></div>';
     }
     html+='</div>';
     // 주간TEST
@@ -1424,7 +1453,7 @@ function rFB(){
     if(noW){
       html+='<div style="display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:#7A9E8E;flex:1">없음</span><button class="at 없음" style="font-size:9px;padding:2px 6px" onclick="toggleFBNo('+sid+',\'weekly\')">해제</button></div>';
     } else {
-      html+='<div style="display:flex;gap:3px;align-items:center"><input id="fb-wc-'+sid+'" type="number" min="0" max="100" placeholder="맞" style="width:38px;padding:4px 5px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028" value="'+wVal+'" onchange="updFBCard('+sid+')"><span style="color:#7A9E8E;font-size:11px">/</span><input id="fb-wt-'+sid+'" type="number" min="0" max="100" placeholder="전" style="width:38px;padding:4px 5px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028" value="'+wtVal+'" onchange="updFBCard('+sid+')"><button class="at" style="font-size:9px;padding:2px 5px;margin-left:1px" onclick="toggleFBNo('+sid+',\'weekly\')">없음</button></div>';
+      html+='<div style="display:flex;gap:3px;align-items:center"><input id="fb-wc-'+sid+'" type="number" min="0" max="100" placeholder="점수" style="width:50px;padding:4px 5px;font-size:12px;border:1px solid #B2D8C4;border-radius:var(--rs);background:#fff;color:#1A3028" value="'+wVal+'" onchange="updFBCard('+sid+')"><button class="at" style="font-size:9px;padding:2px 5px;margin-left:1px" onclick="toggleFBNo('+sid+',\'weekly\')">없음</button></div>';
     }
     html+='</div>';
     html+='</div>'; // end TEST row
