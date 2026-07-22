@@ -681,7 +681,7 @@ function rHome(){
       <span style="font-size:10px;color:#94A3B8">＋ 버튼: 추가 · 학생 드래그: 이동</span>
     </div>
     <div style="display:flex;gap:5px">
-      <button onclick="ttAddTimeSlot()" title="시간대를 직접 추가/수정" style="background:#fff;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:11px;padding:0 9px;height:28px;cursor:pointer">🕐 시간대 추가/수정</button>
+      <button onclick="ttAddTimeSlot()" title="예: 홍길동 월 4:00-6:00" style="background:#fff;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:11px;padding:0 9px;height:28px;cursor:pointer">🕐 학생 직접 추가</button>
       <button onclick="window._wkOffset=(window._wkOffset||0)-1;rHome()" style="background:#F2FAF5;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:13px;width:28px;height:28px;cursor:pointer">◀</button>
       <button onclick="window._wkOffset=(window._wkOffset||0)+1;rHome()" style="background:#F2FAF5;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:13px;width:28px;height:28px;cursor:pointer">▶</button>
     </div>
@@ -1020,13 +1020,38 @@ function savePinnedTimes(arr){
   try{localStorage.setItem('hak_pinned_times',JSON.stringify(arr));}catch(e){}
 }
 function ttAddTimeSlot(){
-  const v=prompt('추가할 시간대를 입력하세요 (예: 1:00-3:00)');
+  const v=prompt('학생이름 요일 시간대 순서로 입력하세요\n예) 홍길동 월 4:00-6:00\n\n시간대만 입력하면 빈 칸(시간대만 있는 행)이 추가됩니다\n예) 1:00-3:00');
   if(v===null)return;
-  const t=v.trim();if(!t)return;
+  const raw=v.trim();if(!raw)return;
+  const dayNum={'월':1,'화':2,'수':3,'목':4,'금':5,'토':6,'일':0};
+  const parts=raw.split(/\s+/);
+  const dayIdx=parts.findIndex(p=>dayNum[p]!==undefined);
+  if(dayIdx>0){
+    const name=parts.slice(0,dayIdx).join(' ');
+    const time=parts.slice(dayIdx+1).join(' ').trim();
+    const dNum=dayNum[parts[dayIdx]];
+    if(dNum<1||dNum>5){T('평일(월~금) 시간표에만 추가할 수 있어요');return;}
+    if(!time){T('시간대도 함께 입력해주세요 (예: 홍길동 월 4:00-6:00)');return;}
+    const active=students.filter(s=>s.active!==false);
+    const match=active.find(s=>s.name===name)||active.find(s=>s.name.includes(name));
+    if(!match){T('"'+name+'" 학생을 찾을 수 없어요');return;}
+    const _today=ld(today());
+    const _curDow=_today.getDay()||7;
+    const _wkOff=window._wkOffset||0;
+    const _d=new Date(_today);
+    _d.setDate(_today.getDate()+(dNum-_curDow)+(_wkOff*7));
+    const dateStr=ds(_d);
+    if(!Array.isArray(match.extraDates))match.extraDates=[];
+    match.extraDates.push({date:dateStr,time});
+    saveData();
+    T(match.name+' → '+DOW[dNum]+'요일 '+time+' 추가됨');
+    rHome();
+    return;
+  }
   const arr=getPinnedTimes();
-  if(!arr.includes(t))arr.push(t);
+  if(!arr.includes(raw))arr.push(raw);
   savePinnedTimes(arr);
-  T(t+' 시간대 추가됨');
+  T(raw+' 시간대 추가됨');
   rHome();
 }
 function ttEditTimeSlot(oldTime){
