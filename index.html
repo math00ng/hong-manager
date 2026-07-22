@@ -546,7 +546,6 @@ function rHome(){
   students.filter(s=>s.active!==false).forEach(s=>{
     getScheds(s).forEach(sc=>{if(sc.time)timeSlots.add(sc.time);});
   });
-  const sortedTimes=[...timeSlots].sort();
 
   // 주차 오프셋 (0=이번주, -1=지난주, 1=다음주)
   if(window._wkOffset===undefined)window._wkOffset=0;
@@ -565,14 +564,15 @@ function rHome(){
   students.filter(s=>s.active!==false).forEach(s=>{
     [1,2,3,4,5].forEach(d=>{
       const dateStr=_wkDates_[d];
+      if((s.skipDates||[]).includes(dateStr))return;
       const ovr=(s.timeOverrides||{})[dateStr];
       const att=(s.attendance||{})[dateStr];
       const isAbsent=att==='X';
       const sched=getScheds(s).find(sc=>sc.days&&sc.days.includes(d));
       if(ovr){
-        dayMap[d].push({s,time:ovr,changed:true,absent:isAbsent});
+        dayMap[d].push({s,time:ovr,changed:true,absent:isAbsent,dateStr});
       } else if(sched){
-        dayMap[d].push({s,time:sched.time||'',absent:isAbsent});
+        dayMap[d].push({s,time:sched.time||'',absent:isAbsent,dateStr});
       }
     });
     // 보강: makeups 값에 이번주 날짜가 포함되는지 확인
@@ -598,11 +598,22 @@ function rHome(){
             mkTime=sched?.time||getScheds(s)[0]?.time||'보강';
           }
           const already=dayMap[d].find(x=>x.s.id===s.id&&x.makeup);
-          if(!already) dayMap[d].push({s,time:mkTime,makeup:true,absent:false});
+          if(!already) dayMap[d].push({s,time:mkTime,makeup:true,absent:false,dateStr});
         }
       });
     });
+    // 수동 추가(원터치 추가 / 드래그 이동으로 생긴 일회성 수업)
+    (s.extraDates||[]).forEach((ex,exi)=>{
+      if(!ex||!ex.date)return;
+      const d=ld(ex.date).getDay();
+      if(d>=1&&d<=5&&_wkDates_[d]===ex.date){
+        if(ex.time)timeSlots.add(ex.time);
+        dayMap[d].push({s,time:ex.time||'',extra:true,extraIdx:exi,dateStr:ex.date});
+      }
+    });
   });
+  getPinnedTimes().forEach(t=>{if(t)timeSlots.add(t);});
+  const sortedTimes=[...timeSlots].sort();
 
   let html='';
 
@@ -662,13 +673,15 @@ function rHome(){
   const _wkStart=ld(_wkDates_[1]),_wkEnd=ld(_wkDates_[5]);
   const _wkRange=(_wkStart.getMonth()+1)+'/'+_wkStart.getDate()+' ~ '+(_wkEnd.getMonth()+1)+'/'+_wkEnd.getDate();
   html+='<div class="card" style="margin-bottom:14px;overflow-x:auto">';
-  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <div style="display:flex;align-items:center;gap:8px">
+  html+=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-size:12px;font-weight:600;color:#1A3028">📅 주간 시간표</span>
       <span style="font-size:11px;color:#7A9E8E">${_wkRange}</span>
       ${_wkOff!==0?`<button onclick="window._wkOffset=0;rHome()" style="font-size:10px;padding:2px 8px;border-radius:10px;border:1px solid #B2D8C4;background:#E8FBF2;color:#1B6B46;cursor:pointer">이번주</button>`:''}
+      <span style="font-size:10px;color:#94A3B8">＋ 버튼: 추가 · 학생 드래그: 이동</span>
     </div>
     <div style="display:flex;gap:5px">
+      <button onclick="ttAddTimeSlot()" title="시간대를 직접 추가/수정" style="background:#fff;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:11px;padding:0 9px;height:28px;cursor:pointer">🕐 시간대 추가/수정</button>
       <button onclick="window._wkOffset=(window._wkOffset||0)-1;rHome()" style="background:#F2FAF5;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:13px;width:28px;height:28px;cursor:pointer">◀</button>
       <button onclick="window._wkOffset=(window._wkOffset||0)+1;rHome()" style="background:#F2FAF5;border:1px solid #B2D8C4;border-radius:6px;color:#2D5044;font-size:13px;width:28px;height:28px;cursor:pointer">▶</button>
     </div>
@@ -678,7 +691,16 @@ function rHome(){
     [1,2,3,4,5].forEach(d=>{
       const stus=dayMap[d];
       const isToday=window._wkOffset===0&&ld(today()).getDay()===d;
-      html+=`<div style="border-radius:var(--rs);overflow:hidden"><div style="background:${isToday?'#2D9B6A':'#D5EEE2'};color:${isToday?'#fff':'#1B6B46'};font-size:12px;font-weight:700;text-align:center;padding:5px 0">${DAYS_KO[d-1]} <span style="font-size:10px;font-weight:400">${stus.length}명</span></div><div style="background:#F5FCF7;min-height:50px;padding:5px">${stus.sort((a,b)=>a.s.name.localeCompare(b.s.name,'ko')).map(item=>{const _bg=item.absent?'#F1F5F9':item.changed?'#FEF3C7':'#fff';const _bc=item.absent?'#CBD5E1':item.changed?'#F59E0B':'#D4EDE0';const _tc=item.absent?'#94A3B8':'#1A3028';const _tag=item.absent?' <span style="font-size:9px;color:#64748B">결석</span>':item.changed?' <span style="font-size:9px;color:#92400E">⏱'+item.time+'</span>':'';return '<div onclick="selStu2('+item.s.id+')" style="font-size:11px;color:'+_tc+';padding:2px 4px;border-radius:3px;cursor:pointer;margin-bottom:2px;background:'+_bg+';border:1px solid '+_bc+';'+(item.absent?'text-decoration:line-through;':'')+'">'+item.s.name+_tag+'</div>';}).join('')}${!stus.length?'<div style="font-size:10px;color:#B2D8C4;text-align:center;padding:8px 0">-</div>':''}</div></div>`;
+      const cellDate=_wkDates_[d];
+      html+='<div ondragover="ttDragOver(event)" ondrop="ttDrop(event,'+d+',\'\',\''+cellDate+'\')" style="border-radius:var(--rs);overflow:hidden"><div style="background:'+(isToday?'#2D9B6A':'#D5EEE2')+';color:'+(isToday?'#fff':'#1B6B46')+';font-size:12px;font-weight:700;text-align:center;padding:5px 0">'+DAYS_KO[d-1]+' <span style="font-size:10px;font-weight:400">'+stus.length+'명</span></div><div style="background:#F5FCF7;min-height:50px;padding:5px">'+stus.sort((a,b)=>a.s.name.localeCompare(b.s.name,'ko')).map(item=>{
+        const s=item.s;
+        const _bg=item.extra?'#EDE9FE':item.absent?'#F1F5F9':item.changed?'#FEF3C7':'#fff';
+        const _bc=item.extra?'#C4B5FD':item.absent?'#CBD5E1':item.changed?'#F59E0B':'#D4EDE0';
+        const _tc=item.extra?'#5B21B6':item.absent?'#94A3B8':'#1A3028';
+        const _tag=item.extra?' <span style="font-size:9px;color:#5B21B6">추가</span>':item.absent?' <span style="font-size:9px;color:#64748B">결석</span>':item.changed?' <span style="font-size:9px;color:#92400E">⏱'+item.time+'</span>':'';
+        const _dragPayload=s.id+'|'+item.dateStr+'|'+(item.extra?item.extraIdx:'-1');
+        return '<div draggable="true" ondragstart="ttDragStart(event,\''+_dragPayload+'\')" onclick="selStu2('+s.id+')" style="font-size:11px;color:'+_tc+';padding:2px 4px;border-radius:3px;cursor:grab;margin-bottom:2px;background:'+_bg+';border:1px solid '+_bc+';'+(item.absent?'text-decoration:line-through;':'')+'">'+s.name+_tag+'</div>';
+      }).join('')+'<div onclick="ttOpenAdd('+d+',\'\',\''+cellDate+'\')" style="text-align:center;font-size:11px;color:#B2D8C4;cursor:pointer;padding:2px 0">＋</div>'+(!stus.length?'<div style="font-size:10px;color:#B2D8C4;text-align:center;padding:4px 0">-</div>':'')+'</div></div>';
     });
     html+='</div>';
   } else {
@@ -692,24 +714,28 @@ function rHome(){
     sortedTimes.forEach(time=>{
       if(time==='보강')return; // 보강 전용 행은 별도 처리
       html+='<tr>';
-      html+=`<td style="padding:6px 8px;font-size:11px;color:#5A8070;border:1px solid #D4EDE0;background:#F2FAF5;font-weight:600;white-space:nowrap">${time}</td>`;
+      html+='<td style="padding:6px 8px;font-size:11px;color:#5A8070;border:1px solid #D4EDE0;background:#F2FAF5;font-weight:600;white-space:nowrap"><div style="display:flex;align-items:center;justify-content:space-between;gap:4px">'+time+'<span onclick="ttEditTimeSlot(\''+time+'\')" title="이 시간대 수정/삭제" style="cursor:pointer;color:#A3C4B0;font-size:10px">✎</span></div></td>';
       [1,2,3,4,5].forEach(d=>{
         const isToday=_wkOff===0&&ld(today()).getDay()===d;
+        const cellDate=_wkDates_[d];
         const cellStus=dayMap[d].filter(({time:t})=>t===time).sort((a,b)=>a.s.name.localeCompare(b.s.name,'ko'));
-        html+=`<td style="padding:5px 6px;border:1px solid #D4EDE0;vertical-align:top;background:${isToday?'#F0FAF4':'#fff'};overflow:hidden">`;
+        html+='<td ondragover="ttDragOver(event)" ondrop="ttDrop(event,'+d+',\''+time+'\',\''+cellDate+'\')" style="padding:5px 6px;border:1px solid #D4EDE0;vertical-align:top;background:'+(isToday?'#F0FAF4':'#fff')+';overflow:hidden;position:relative">';
         if(cellStus.length){
           cellStus.forEach(item=>{
             const s=item.s;
-            const _bg=item.makeup?'#FDECEA':item.absent?'#F1F5F9':item.changed?'#FEF3C7':isToday?'#D5EEE2':'#EAF5EE';
-            const _bc=item.makeup?'#F5B7B1':item.absent?'#CBD5E1':item.changed?'#F59E0B':'#B8DECA';
-            const _tc=item.makeup?'#922B21':item.absent?'#94A3B8':'#1A3028';
-            const _tag=item.makeup?' <span style="font-size:9px;color:#922B21;font-weight:600">보강</span>':item.absent?' <span style="font-size:9px;color:#64748B">결석</span>':item.changed?' <span style="font-size:9px;color:#92400E">변경</span>':'';
-            const _dateStr=_wkDates_[d];
-            html+='<div style="font-size:11px;color:'+_tc+';padding:2px 5px;border-radius:3px;margin-bottom:2px;background:'+_bg+';border:1px solid '+_bc+';white-space:nowrap;display:flex;align-items:center;gap:3px;'+(item.absent?'text-decoration:line-through;':'')+'">'
+            const _bg=item.extra?'#EDE9FE':item.makeup?'#FDECEA':item.absent?'#F1F5F9':item.changed?'#FEF3C7':isToday?'#D5EEE2':'#EAF5EE';
+            const _bc=item.extra?'#C4B5FD':item.makeup?'#F5B7B1':item.absent?'#CBD5E1':item.changed?'#F59E0B':'#B8DECA';
+            const _tc=item.extra?'#5B21B6':item.makeup?'#922B21':item.absent?'#94A3B8':'#1A3028';
+            const _tag=item.extra?' <span style="font-size:9px;color:#5B21B6;font-weight:600">추가</span>':item.makeup?' <span style="font-size:9px;color:#922B21;font-weight:600">보강</span>':item.absent?' <span style="font-size:9px;color:#64748B">결석</span>':item.changed?' <span style="font-size:9px;color:#92400E">변경</span>':'';
+            const _dateStr=item.dateStr||_wkDates_[d];
+            const _dragPayload=s.id+'|'+_dateStr+'|'+(item.extra?item.extraIdx:'-1');
+            html+='<div draggable="true" ondragstart="ttDragStart(event,\''+_dragPayload+'\')" style="font-size:11px;color:'+_tc+';padding:2px 5px;border-radius:3px;margin-bottom:2px;background:'+_bg+';border:1px solid '+_bc+';white-space:nowrap;display:flex;align-items:center;gap:3px;cursor:grab;'+(item.absent?'text-decoration:line-through;':'')+'">'
               +(s.grade?'<span style="font-size:9px;color:#7A9E8E">'+s.grade+'</span>':'')
               +'<span onclick="selStu2('+s.id+')" style="cursor:pointer;flex:1">'+s.name+'</span>'
               +_tag
-              +(item.makeup
+              +(item.extra
+                ?'<span onclick="ttRemoveExtra('+s.id+','+item.extraIdx+')" title="이 수업 삭제" style="cursor:pointer;color:#A78BFA;font-size:10px;padding:0 2px">✕</span>'
+                :item.makeup
                 ?'<span onclick="changeMakeupTimeHome('+s.id+',\''+_dateStr+'\')" title="보강 시간 변경" style="cursor:pointer;color:#F87171;font-size:10px;padding:0 2px">⏱</span>'
                 :'<span onclick="changeStuTimeHome('+s.id+',\''+_dateStr+'\')" title="시간 변경" style="cursor:pointer;color:#94A3B8;font-size:10px;padding:0 2px">⏱</span>')
               +'</div>';
@@ -717,6 +743,7 @@ function rHome(){
         } else {
           html+='<span style="font-size:10px;color:#D4EDE0">·</span>';
         }
+        html+='<div onclick="ttOpenAdd('+d+',\''+time+'\',\''+cellDate+'\')" title="이 시간에 학생 추가" style="text-align:center;font-size:11px;color:#B2D8C4;cursor:pointer;padding:1px 0;border-radius:3px;margin-top:2px" onmouseover="this.style.background=\'#E8FBF2\';this.style.color=\'#2D9B6A\'" onmouseout="this.style.background=\'\';this.style.color=\'#B2D8C4\'">＋</div>';
         html+='</td>';
       });
       html+='</tr>';
@@ -902,6 +929,121 @@ function rHome(){
     html+='</div>';
   }
   document.getElementById('mc').innerHTML=html;
+}
+
+/* ═══ 주간 시간표: 드래그 이동 / 클릭 추가 ═══ */
+let _ttDragPayload=null;
+function ttDragStart(ev,payload){
+  _ttDragPayload=payload;
+  try{ev.dataTransfer.setData('text/plain',payload);ev.dataTransfer.effectAllowed='move';}catch(e){}
+}
+function ttDragOver(ev){ev.preventDefault();try{ev.dataTransfer.dropEffect='move';}catch(e){}}
+function ttDrop(ev,toDay,toTime,toDate){
+  ev.preventDefault();
+  let payload=_ttDragPayload;
+  try{const dt=ev.dataTransfer.getData('text/plain');if(dt)payload=dt;}catch(e){}
+  if(!payload)return;
+  const parts=payload.split('|');
+  const sid=+parts[0],fromDate=parts[1],exIdx=+parts[2];
+  const s=gs(sid);if(!s)return;
+  if(fromDate===toDate){_ttDragPayload=null;return;}
+  if(exIdx>=0){
+    if(!Array.isArray(s.extraDates))s.extraDates=[];
+    if(s.extraDates[exIdx])s.extraDates[exIdx]={date:toDate,time:toTime};
+  } else {
+    if(!Array.isArray(s.skipDates))s.skipDates=[];
+    if(!s.skipDates.includes(fromDate))s.skipDates.push(fromDate);
+    if(!Array.isArray(s.extraDates))s.extraDates=[];
+    s.extraDates.push({date:toDate,time:toTime});
+  }
+  saveData();T(s.name+' → '+fmtS(toDate)+(toTime?' '+toTime:'')+' 이동됨');
+  _ttDragPayload=null;
+  rHome();
+}
+function ttRemoveExtra(sid,exIdx){
+  const s=gs(sid);if(!s||!Array.isArray(s.extraDates))return;
+  if(!confirm(s.name+' 학생의 이 수업을 삭제할까요?'))return;
+  s.extraDates.splice(exIdx,1);
+  saveData();T('삭제됨');rHome();
+}
+function ttOpenAdd(day,time,dateStr){
+  const active=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const ov=document.createElement('div');ov.className='mo';
+  const md=document.createElement('div');md.className='md';
+  const dObj=ld(dateStr);
+  md.innerHTML='<h3>'+DOW[dObj.getDay()]+'요일 '+(dObj.getMonth()+1)+'/'+dObj.getDate()+(time?' '+time:'')+'에 학생 추가</h3>'
+    +'<div class="fl" style="position:relative;margin-bottom:9px"><label>학생 검색</label><input id="tt-sq" placeholder="이름 입력..." autocomplete="off"><div id="tt-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #B2D8C4;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:10;max-height:180px;overflow-y:auto"></div><input type="hidden" id="tt-sid"></div>'
+    +'<div class="fl" style="margin-bottom:13px"><label>시간</label><input id="tt-time" value="'+(time||'')+'" placeholder="예) 4:00-6:00"></div>'
+    +'<div class="md-b"><button class="btn" id="tt-cancel">취소</button><button class="btn p" id="tt-ok">추가</button></div>';
+  ov.appendChild(md);document.body.appendChild(ov);
+  window._ttActive=active;
+  document.getElementById('tt-sq').oninput=function(){ttFilterStu(this.value);};
+  document.getElementById('tt-cancel').onclick=function(){ov.remove();};
+  document.getElementById('tt-ok').onclick=function(){
+    const sid=+document.getElementById('tt-sid').value;
+    const tm=document.getElementById('tt-time').value.trim();
+    if(!sid){T('학생을 선택해주세요');return;}
+    const s=gs(sid);if(!s)return;
+    if(!Array.isArray(s.extraDates))s.extraDates=[];
+    s.extraDates.push({date:dateStr,time:tm});
+    saveData();T(s.name+' 추가됨');ov.remove();rHome();
+  };
+  setTimeout(()=>document.getElementById('tt-sq')?.focus(),80);
+}
+function ttFilterStu(q){
+  const drop=document.getElementById('tt-drop');if(!drop)return;
+  const matched=(window._ttActive||[]).filter(s=>s.name.includes(q.trim())).slice(0,8);
+  if(!q.trim()||!matched.length){drop.style.display='none';return;}
+  drop.style.display='block';
+  drop.innerHTML=matched.map(s=>'<div onclick="ttSelectStu('+s.id+',\''+s.name+'\')" style="padding:8px 11px;cursor:pointer;font-size:14px;color:#1A3028;border-bottom:1px solid #EAF5EE">'+s.name+' <span style="font-size:11px;color:#7A9E8E">'+(s.grade||'')+'</span></div>').join('');
+}
+function ttSelectStu(id,name){
+  document.getElementById('tt-sid').value=id;
+  document.getElementById('tt-sq').value=name;
+  document.getElementById('tt-drop').style.display='none';
+}
+
+/* 시간표에 직접 추가한(학생 배정 없어도 항상 보이는) 시간대 */
+function getPinnedTimes(){
+  try{
+    const raw=localStorage.getItem('hak_pinned_times');
+    if(raw===null){
+      const def=['1:00-3:00'];
+      localStorage.setItem('hak_pinned_times',JSON.stringify(def));
+      return def;
+    }
+    const arr=JSON.parse(raw);
+    return Array.isArray(arr)?arr:[];
+  }catch(e){return[];}
+}
+function savePinnedTimes(arr){
+  try{localStorage.setItem('hak_pinned_times',JSON.stringify(arr));}catch(e){}
+}
+function ttAddTimeSlot(){
+  const v=prompt('추가할 시간대를 입력하세요 (예: 1:00-3:00)');
+  if(v===null)return;
+  const t=v.trim();if(!t)return;
+  const arr=getPinnedTimes();
+  if(!arr.includes(t))arr.push(t);
+  savePinnedTimes(arr);
+  T(t+' 시간대 추가됨');
+  rHome();
+}
+function ttEditTimeSlot(oldTime){
+  const nv=prompt('시간대 수정 (완전히 비우고 확인을 누르면 이 시간대를 목록에서 제거합니다)',oldTime);
+  if(nv===null)return;
+  const arr=getPinnedTimes();
+  const idx=arr.indexOf(oldTime);
+  const nt=nv.trim();
+  if(!nt){
+    if(idx>=0){arr.splice(idx,1);savePinnedTimes(arr);T('시간대 삭제됨');}
+    else T('학생이 배정된 시간대는 학생을 모두 옮긴 뒤 삭제할 수 있어요');
+  } else {
+    if(idx>=0)arr[idx]=nt;else arr.push(nt);
+    savePinnedTimes(arr);
+    T('시간대 수정됨');
+  }
+  rHome();
 }
 
 /* 일일업무 */
@@ -1279,7 +1421,10 @@ function selectConsultStu(id,name){
   document.getElementById('ca-sq').value=name;
   document.getElementById('ca-drop').style.display='none';
 }
-document.addEventListener('click',function(e){const d=document.getElementById('ca-drop');if(d&&!d.contains(e.target)&&e.target.id!=='ca-sq')d.style.display='none';});
+document.addEventListener('click',function(e){
+  const d=document.getElementById('ca-drop');if(d&&!d.contains(e.target)&&e.target.id!=='ca-sq')d.style.display='none';
+  const d2=document.getElementById('tt-drop');if(d2&&!d2.contains(e.target)&&e.target.id!=='tt-sq')d2.style.display='none';
+});
 function addConsultPage(){
   const sid=+document.getElementById('ca-s').value,s=gs(sid);
   if(!s){T('학생을 선택해주세요');return;}
@@ -1370,11 +1515,6 @@ function rFB(){
     });
     saveData();
   }
-  // 지금 당장 특이사항 비우기
-  students.forEach(s=>{
-    s.fbNotes={};
-  });
-  saveData();
   const td=today();
   // 전체 재원생 (출석 여부 상관없이)
   const allActive=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
@@ -1547,7 +1687,7 @@ function swT(t){
   });
   rTab();
 }
-function rTab(){const s=gs(selStu),c=document.getElementById('tc');if(!c||!s)return;if(curTab==='info')c.innerHTML=infoT(s);else if(curTab==='stuatt')c.innerHTML=stuAttT(s);else if(curTab==='tb')c.innerHTML=tbT(s);else if(curTab==='test')c.innerHTML=testT(s);else if(curTab==='hw')c.innerHTML=hwT(s);else if(curTab==='fbhist')c.innerHTML=fbHistT(s);else if(curTab==='graph'){c.innerHTML=graphT(s);}else if(curTab==='pmp')c.innerHTML=pmpT(s);else if(curTab==='wc')c.innerHTML=wcT(s);else if(curTab==='pmp')c.innerHTML=pmpT(s);}
+function rTab(){const s=gs(selStu),c=document.getElementById('tc');if(!c||!s)return;if(curTab==='info')c.innerHTML=infoT(s);else if(curTab==='stuatt')c.innerHTML=stuAttT(s);else if(curTab==='tb')c.innerHTML=tbT(s);else if(curTab==='test')c.innerHTML=testT(s);else if(curTab==='hw')c.innerHTML=hwT(s);else if(curTab==='fbhist')c.innerHTML=fbHistT(s);else if(curTab==='graph'){c.innerHTML=graphT(s);}else if(curTab==='pmp')c.innerHTML=pmpT(s);else if(curTab==='wc')c.innerHTML=wcT(s);}
 
 function infoT(s){
   const scs=getScheds(s);
@@ -2553,23 +2693,23 @@ function addTest(id){const d=document.getElementById('nt-d').value,type=document
 function rmTest(id,type,i){const s=gs(id);if(type==='d')s.dailyTests.splice(i,1);else s.weeklyTests.splice(i,1);saveData();T('삭제됨');rTab();}
 
 function pmpT(s){
-  if(!Array.isArray(s.pmpList))s.pmpList=[];
+  if(!Array.isArray(s.pmp))s.pmp=[];
   let h='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font-size:11px;font-weight:500;color:#5A8070;text-transform:uppercase;letter-spacing:.05em">PMP 기록</span><button class="btn s p" onclick="addPMP('+s.id+')">+ 추가</button></div>';
-  if(s.pmpList.length)s.pmpList.forEach((w,i)=>{h+='<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:#F5FCF7;border-radius:var(--rs);margin-bottom:5px"><span style="font-size:11px;color:#7A9E8E;white-space:nowrap">'+(w.date||'')+' '+(w.time||'')+'</span><span style="flex:1;font-size:13px;color:#2D5044">'+(w.memo||'')+'</span><button class="btn s d" onclick="rmPMP('+s.id+','+i+')">삭제</button></div>';});
+  if(s.pmp.length)s.pmp.forEach((w,i)=>{h+='<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:#F5FCF7;border-radius:var(--rs);margin-bottom:5px"><span style="font-size:11px;color:#7A9E8E;white-space:nowrap">'+(w.date||'')+' '+(w.time||'')+'</span><span style="flex:1;font-size:13px;color:#2D5044">'+(w.memo||'')+'</span><button class="btn s d" onclick="rmPMP('+s.id+','+i+')">삭제</button></div>';});
   else h+='<div style="font-size:13px;color:#7A9E8E">기록 없음</div>';
   h+='</div>';return h;
 }
 function addPMP(id){
-  const s=gs(id);if(!Array.isArray(s.pmpList))s.pmpList=[];
+  const s=gs(id);if(!Array.isArray(s.pmp))s.pmp=[];
   const ov=document.createElement('div');ov.className='mo';
   const md=document.createElement('div');md.className='md';
-  md.innerHTML='<h3>PMP 추가</h3><div class="fl" style="margin-bottom:9px"><label>날짜</label><input type="date" id="pmp-d" value="'+today()+'"></div><div class="fl" style="margin-bottom:9px"><label>시간</label><input id="pmp-t" placeholder="예) 4:00-6:00"></div><div class="fl" style="margin-bottom:13px"><label>내용</label><textarea id="pmp-m" rows="2" placeholder="수업 내용" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #B2D8C4;border-radius:6px;font-family:system-ui,sans-serif;resize:vertical;color:#1A3028;background:#fff"></textarea></div>';
+  md.innerHTML='<h3>PMP 추가</h3><div class="fl" style="margin-bottom:9px"><label>날짜</label><input type="date" id="pmp-d" value="'+today()+'"></div><div class="fl" style="margin-bottom:9px"><label>시간</label><input id="pmp-t" placeholder="10:00-12:00"></div><div class="fl" style="margin-bottom:13px"><label>내용</label><textarea id="pmp-m" rows="2" placeholder="수업 내용" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #B2D8C4;border-radius:6px;font-family:system-ui,sans-serif;resize:vertical;color:#1A3028;background:#fff"></textarea></div>';
   const db=document.createElement('div');db.className='md-b';
   const bc=document.createElement('button');bc.className='btn';bc.textContent='취소';bc.onclick=function(){ov.remove();};
-  const bs=document.createElement('button');bs.className='btn p';bs.textContent='추가';bs.onclick=function(){s.pmpList.push({date:document.getElementById('pmp-d').value,time:document.getElementById('pmp-t').value,memo:document.getElementById('pmp-m').value});ov.remove();saveData();T('추가됨');rTab();};
+  const bs=document.createElement('button');bs.className='btn p';bs.textContent='추가';bs.onclick=function(){s.pmp.push({date:document.getElementById('pmp-d').value,time:document.getElementById('pmp-t').value,memo:document.getElementById('pmp-m').value});ov.remove();saveData();T('추가됨');rTab();};
   db.appendChild(bc);db.appendChild(bs);md.appendChild(db);ov.appendChild(md);document.body.appendChild(ov);
 }
-function rmPMP(id,i){const s=gs(id);s.pmpList.splice(i,1);saveData();T('삭제됨');rTab();}
+function rmPMP(id,i){const s=gs(id);s.pmp.splice(i,1);saveData();T('삭제됨');rTab();}
 
 function wcT(s){
   if(!Array.isArray(s.weekendClinic))s.weekendClinic=[];
@@ -2589,25 +2729,6 @@ function addWC(id){
   db.appendChild(bc);db.appendChild(bs);md.appendChild(db);ov.appendChild(md);document.body.appendChild(ov);
 }
 function rmWC(id,i){const s=gs(id);s.weekendClinic.splice(i,1);saveData();T('삭제됨');rTab();}
-
-function pmpT(s){
-  if(!Array.isArray(s.pmp))s.pmp=[];
-  let h='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font-size:11px;font-weight:500;color:#5A8070;text-transform:uppercase;letter-spacing:.05em">PMP 기록</span><button class="btn s p" onclick="addPMP('+s.id+')">+ 추가</button></div>';
-  if(s.pmp.length)s.pmp.forEach((w,i)=>{h+='<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:#F5FCF7;border-radius:var(--rs);margin-bottom:5px"><span style="font-size:11px;color:#7A9E8E;white-space:nowrap">'+(w.date||'')+' '+(w.time||'')+'</span><span style="flex:1;font-size:13px;color:#2D5044">'+(w.memo||'')+'</span><button class="btn s d" onclick="rmPMP('+s.id+','+i+')">삭제</button></div>';});
-  else h+='<div style="font-size:13px;color:#7A9E8E">기록 없음</div>';
-  h+='</div>';return h;
-}
-function addPMP(id){
-  const s=gs(id);if(!Array.isArray(s.pmp))s.pmp=[];
-  const ov=document.createElement('div');ov.className='mo';
-  const md=document.createElement('div');md.className='md';
-  md.innerHTML='<h3>PMP 추가</h3><div class="fl" style="margin-bottom:9px"><label>날짜</label><input type="date" id="pmp-d" value="'+today()+'"></div><div class="fl" style="margin-bottom:9px"><label>시간</label><input id="pmp-t" placeholder="10:00-12:00"></div><div class="fl" style="margin-bottom:13px"><label>내용</label><textarea id="pmp-m" rows="2" placeholder="수업 내용" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid #B2D8C4;border-radius:6px;font-family:system-ui,sans-serif;resize:vertical;color:#1A3028;background:#fff"></textarea></div>';
-  const db=document.createElement('div');db.className='md-b';
-  const bc=document.createElement('button');bc.className='btn';bc.textContent='취소';bc.onclick=function(){ov.remove();};
-  const bs=document.createElement('button');bs.className='btn p';bs.textContent='추가';bs.onclick=function(){s.pmp.push({date:document.getElementById('pmp-d').value,time:document.getElementById('pmp-t').value,memo:document.getElementById('pmp-m').value});ov.remove();saveData();T('추가됨');rTab();};
-  db.appendChild(bc);db.appendChild(bs);md.appendChild(db);ov.appendChild(md);document.body.appendChild(ov);
-}
-function rmPMP(id,i){const s=gs(id);s.pmp.splice(i,1);saveData();T('삭제됨');rTab();}
 
 function upF(id,key,val){
   const s=gs(id);if(!s)return;
