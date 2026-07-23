@@ -371,7 +371,9 @@ function applyLoaded(p){
     wcSlots:Array.isArray(s.wcSlots)?s.wcSlots:[],
     pmpSlots:Array.isArray(s.pmpSlots)?s.pmpSlots:[],
     wcAtt:s.wcAtt||{},wcAttMemo:s.wcAttMemo||{},
-    pmpAtt:s.pmpAtt||{},pmpAttMemo:s.pmpAttMemo||{}
+    pmpAtt:s.pmpAtt||{},pmpAttMemo:s.pmpAttMemo||{},
+    extraDates:Array.isArray(s.extraDates)?s.extraDates:[],
+    skipDates:Array.isArray(s.skipDates)?s.skipDates:[]
   }));
   if(students.length)nextId=Math.max(...students.map(s=>s.id))+1;
   events=p.events||[];todos=p.todos||[];
@@ -410,7 +412,9 @@ function loadData(){
       wcSlots:Array.isArray(s.wcSlots)?s.wcSlots:[],
       pmpSlots:Array.isArray(s.pmpSlots)?s.pmpSlots:[],
       wcAtt:s.wcAtt||{},wcAttMemo:s.wcAttMemo||{},
-      pmpAtt:s.pmpAtt||{},pmpAttMemo:s.pmpAttMemo||{}
+      pmpAtt:s.pmpAtt||{},pmpAttMemo:s.pmpAttMemo||{},
+      extraDates:Array.isArray(s.extraDates)?s.extraDates:[],
+      skipDates:Array.isArray(s.skipDates)?s.skipDates:[]
     }));
     if(students.length)nextId=Math.max(...students.map(s=>s.id))+1;
     events=p.events||[];todos=p.todos||[];
