@@ -1534,7 +1534,7 @@ function buildFB(s,dateStr,book,hw,note,dScore,wScore){
   return lines.join('\n');
 }
 function rFB(){
-  document.getElementById('tp-t').textContent='피드백 문자';document.getElementById('tp-a').innerHTML='';
+  document.getElementById('tp-t').textContent='피드백 문자';document.getElementById('tp-a').innerHTML='<button class="btn d" onclick="resetAllFB()">🗑 전체 초기화</button>';
   // 월요일이면 특이사항 초기화
   const _today=ld(today());
   if(_today.getDay()===1){ // 1 = 월요일
@@ -1642,7 +1642,7 @@ function rFB(){
 
 function toggleFBNo(sid,type){
   const s=gs(sid);if(!s)return;
-  const dateVal=vDate||today();
+  const dateVal=today();
   const key=type==='daily'?'noDaily':'noWeekly';
   if(!s[key])s[key]={};
   s[key][dateVal]=!s[key][dateVal];
@@ -1651,20 +1651,24 @@ function toggleFBNo(sid,type){
 }
 function updFBCard(sid){
   const s=gs(sid);if(!s)return;
-  const dateVal=vDate||today();
+  const dateVal=today();
   const tdo=ld(dateVal);
   const dateStr=(tdo.getMonth()+1)+'월 '+tdo.getDate()+'일 ('+['일','월','화','수','목','금','토'][tdo.getDay()]+')';
   const book=document.getElementById('fb-b-'+sid)?.value||'';
   const hw=document.getElementById('fb-hw-'+sid)?.value||'';
   const note=document.getElementById('fb-n-'+sid)?.value||'';
-  const dc=document.getElementById('fb-dc-'+sid)?.value,dt=document.getElementById('fb-dt-'+sid)?.value;
-  const wc=document.getElementById('fb-wc-'+sid)?.value,wt=document.getElementById('fb-wt-'+sid)?.value;
+  const dc=document.getElementById('fb-dc-'+sid)?.value||'',dt=document.getElementById('fb-dt-'+sid)?.value||'';
+  const wc=document.getElementById('fb-wc-'+sid)?.value||'',wt=document.getElementById('fb-wt-'+sid)?.value||'';
   const noD=(s.noDaily||{})[dateVal],noW=(s.noWeekly||{})[dateVal];
   const dScore=noD?'없음':(dc||dt)?{correct:dc,total:dt}:null;
   const wScore=noW?'없음':(wc||wt)?{correct:wc,total:wt}:null;
   const prev=document.getElementById('fb-prev-'+sid);
   if(prev)prev.textContent=buildFB(gs(sid),dateStr,book,hw,note,dScore,wScore);
-  
+
+  // 일일/주간 TEST 점수는 실제 학생 테스트 기록에도 바로 저장 (다시 들어와도 유지)
+  if(!noD&&(dc!==''||dt!=='')){setTest(sid,'daily',dateVal,'correct',dc);setTest(sid,'daily',dateVal,'total',dt);}
+  if(!noW&&(wc!==''||wt!=='')){setTest(sid,'weekly',dateVal,'correct',wc);setTest(sid,'weekly',dateVal,'total',wt);}
+
   // 입력할 때마다 자동 저장
   if(!s.fbNotes)s.fbNotes={};
   if(note)s.fbNotes[dateVal]=note;else delete s.fbNotes[dateVal];
@@ -1682,7 +1686,7 @@ function saveFBCard(sid){
   const s=gs(sid);if(!s)return;
   const prev=document.getElementById('fb-prev-'+sid);if(!prev)return;
   if(!s.feedbackHistory)s.feedbackHistory=[];
-  const dateVal=vDate||today();
+  const dateVal=today();
   const hw=document.getElementById('fb-hw-'+sid)?.value||'';
   const book=document.getElementById('fb-b-'+sid)?.value||'';
   const note=document.getElementById('fb-n-'+sid)?.value||'';
@@ -1695,6 +1699,19 @@ function saveFBCard(sid){
   saveData();T(s.name+' 피드백 저장됨! ✓');
   const _sb=document.querySelector('[onclick="saveFBCard('+sid+')"]');
   if(_sb){_sb.textContent='✓ 저장됨';setTimeout(function(){if(_sb)_sb.textContent='저장';},1500);}
+}
+function resetAllFB(){
+  if(!confirm('모든 학생의 피드백 문자 입력 내용(교재명, 일일/주간TEST 점수, 특이사항)을 초기화할까요?\n되돌릴 수 없습니다.'))return;
+  const vd=today();
+  students.forEach(s=>{
+    if(s.fbNotes)delete s.fbNotes[vd];
+    if(s.feedbackHistory)s.feedbackHistory=s.feedbackHistory.filter(f=>f.date!==vd);
+    if(Array.isArray(s.dailyTests))s.dailyTests=s.dailyTests.filter(t=>t.date!==vd);
+    if(Array.isArray(s.weeklyTests))s.weeklyTests=s.weeklyTests.filter(t=>t.date!==vd);
+    if(s.noDaily)delete s.noDaily[vd];
+    if(s.noWeekly)delete s.noWeekly[vd];
+  });
+  saveData();T('전체 초기화됨');rFB();
 }
 
 /* 학생 상세 */
