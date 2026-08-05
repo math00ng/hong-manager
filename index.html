@@ -1493,23 +1493,8 @@ function editConsultPage(sid,i){
 function buildFB(s,dateStr,book,hw,note,dScore,wScore){
   const lines=[];
   const name=s.name;
-  lines.push(name+' 학생 피드백 문자 드립니다.');
-  lines.push('');
-  // 이번주 수업 날짜 계산
-  const _vd=dateStr.match(/\d{1,2}\/\d{1,2}/)?dateStr.split('(')[0].trim():'';
-  const _dow=ld(vDate||today()).getDay();
-  const _weekStart=new Date(ld(vDate||today()));_weekStart.setDate(_weekStart.getDate()-(_dow||7)+1);
-  const _stuDays=getStuDays(s);
-  const _thisWeekClasses=[];
-  for(let i=0;i<7;i++){
-    const _d=new Date(_weekStart);_d.setDate(_d.getDate()+i);
-    const _dayOfWeek=_d.getDay();
-    if(_stuDays.includes(_dayOfWeek)){
-      const _mm=_d.getMonth()+1, _dd=_d.getDate();
-      _thisWeekClasses.push(_mm+'월 '+_dd+'일('+['일','월','화','수','목','금','토'][_dayOfWeek]+')');
-    }
-  }
-  lines.push('수업일 | '+(_thisWeekClasses.length?_thisWeekClasses.join(', '):'정보없음'));
+  const _wk=getFBWeek();
+  lines.push(name+'학생 '+_wk.month+'월 '+_wk.week+'주차 피드백 문자 드립니다.');
   lines.push('');
   lines.push('교재 | '+(book||''));
   lines.push('');
@@ -1547,10 +1532,20 @@ function rFB(){
   const td=today();
   // 전체 재원생 (출석 여부 상관없이)
   const allActive=students.filter(s=>s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
-  
+  const _fbWk=getFBWeek();
+
   let html='<div style="margin-bottom:12px;padding:12px;background:#E0F5EB;border:1px solid #A7E0C2;border-radius:var(--r);text-align:center">'
     +'<div style="font-size:13px;font-weight:600;color:#0D6B3A">🗓️ 주간 피드백 문자 작성</div>'
-    +'<div style="font-size:11px;color:#2D9B6A;margin-top:3px">재원생 '+allActive.length+'명 | 한 화면에 쫙 표시</div>'
+    +'<div style="font-size:11px;color:#2D9B6A;margin-top:3px;margin-bottom:8px">재원생 '+allActive.length+'명 | 한 화면에 쫙 표시</div>'
+    +'<div style="display:flex;gap:6px;justify-content:center;align-items:center">'
+    +'<span style="font-size:11px;color:#0D6B3A;font-weight:500">전체 문구 주차</span>'
+    +'<select onchange="setFBWeek(\'month\',this.value)" style="padding:5px 8px;font-size:12px;border:1px solid #86D4A8;border-radius:6px;background:#fff;color:#0D6B3A">'
+    +Array.from({length:12},(_,i)=>i+1).map(m=>'<option value="'+m+'" '+(m===_fbWk.month?'selected':'')+'>'+m+'월</option>').join('')
+    +'</select>'
+    +'<select onchange="setFBWeek(\'week\',this.value)" style="padding:5px 8px;font-size:12px;border:1px solid #86D4A8;border-radius:6px;background:#fff;color:#0D6B3A">'
+    +[1,2,3,4,5].map(w=>'<option value="'+w+'" '+(w===_fbWk.week?'selected':'')+'>'+w+'주차</option>').join('')
+    +'</select>'
+    +'</div>'
     +'</div>';
 
   if(!allActive.length){
@@ -1712,6 +1707,35 @@ function resetAllFB(){
     if(s.noWeekly)delete s.noWeekly[vd];
   });
   saveData();T('전체 초기화됨');rFB();
+}
+function getFBWeek(){
+  try{
+    const raw=localStorage.getItem('hak_fb_week');
+    if(raw){const o=JSON.parse(raw);if(o&&o.month&&o.week)return o;}
+  }catch(e){}
+  const now=new Date();
+  return {month:now.getMonth()+1,week:Math.ceil(now.getDate()/7)};
+}
+function saveFBWeek(month,week){
+  try{localStorage.setItem('hak_fb_week',JSON.stringify({month,week}));}catch(e){}
+}
+function setFBWeek(field,val){
+  const cur=getFBWeek();
+  cur[field]=+val;
+  saveFBWeek(cur.month,cur.week);
+  // 이미 입력해서 저장돼있던 오늘자 문구도 새 주차 표기로 즉시 갱신
+  const vd=today();
+  students.forEach(s=>{
+    const entry=(s.feedbackHistory||[]).find(f=>f.date===vd);
+    if(!entry)return;
+    const noD=(s.noDaily||{})[vd],noW=(s.noWeekly||{})[vd];
+    const dT=(s.dailyTests||[]).find(t=>t.date===vd),wT=(s.weeklyTests||[]).find(t=>t.date===vd);
+    const tdo=ld(vd);
+    const dateStr=(tdo.getMonth()+1)+'월 '+tdo.getDate()+'일 ('+['일','월','화','수','목','금','토'][tdo.getDay()]+')';
+    entry.text=buildFB(s,dateStr,entry.book||'',entry.hw||'',entry.note||'',noD?'없음':dT,noW?'없음':wT);
+  });
+  saveData();
+  rFB();
 }
 
 /* 학생 상세 */
